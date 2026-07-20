@@ -3,3 +3,9 @@
 data/raw/
 data/processed/
 *.parquet
+
+#models
+models/
+*.joblib
+*.pkl
+
