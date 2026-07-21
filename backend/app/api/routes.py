@@ -22,6 +22,8 @@ def service_error(error: Exception) -> HTTPException:
     """Convert expected data/artifact failures into a clear operational response."""
     if isinstance(error, (FileNotFoundError, ValueError, KeyError)):
         return HTTPException(status_code=503, detail=str(error))
+    if settings.environment == "development":
+        return HTTPException(status_code=500, detail=f"Model execution failed: {error}")
     return HTTPException(status_code=500, detail="The analytics service could not process this request.")
 
 
