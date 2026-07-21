@@ -7,6 +7,7 @@ from typing import Any
 
 import joblib
 import pandas as pd
+import logging
 
 from backend.app.core.config import settings
 
@@ -19,6 +20,8 @@ MODEL_FILES = {
     "recommendations": "product_recommender_system.joblib",
     "retriever": "rag_retriever.joblib",
 }
+
+LOGGER = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -87,9 +90,27 @@ def recommend(customer_id: str, limit: int = 10) -> list[str]:
 
 
 def classify_sentiment(review: str) -> str:
-    model = load_model("sentiment")
-    label = model.predict([review])[0]
-    return str(label)
+    """Classify a review, retaining service availability if an old artifact cannot load.
+
+    Existing ML models remain the preferred path. The small fallback protects the
+    dashboard while a serialized legacy model is retrained through MLflow.
+    """
+    try:
+        model = load_model("sentiment")
+        label = model.predict([review])[0]
+        return str(label)
+    except Exception as error:
+        LOGGER.warning("Sentiment model unavailable; using keyword fallback: %s", error)
+        text = review.lower()
+        negative_words = {"late", "bad", "worst", "broken", "poor", "disappointed", "terrible", "hate"}
+        positive_words = {"great", "excellent", "love", "perfect", "fast", "good", "amazing"}
+        negative_count = sum(word in text for word in negative_words)
+        positive_count = sum(word in text for word in positive_words)
+        if negative_count > positive_count:
+            return "Negative"
+        if positive_count > negative_count:
+            return "Positive"
+        return "Neutral"
 
 
 def demand_forecast(product_id: str | None, days: int) -> list[dict[str, Any]]:
