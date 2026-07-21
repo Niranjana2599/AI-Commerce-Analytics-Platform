@@ -1,5 +1,7 @@
 .venv
 .runtime/
+mlflow/
+mlruns/
 __pycache__/
 *.py[cod]
 

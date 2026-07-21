@@ -1,0 +1,94 @@
+services:
+  mlflow:
+    # Reuse the backend image because it already installs the MLflow Python package.
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    # Use a stable name for the experiment tracking server.
+    container_name: ai-commerce-mlflow
+    # Run MLflow with SQLite metadata and a persistent local artifact directory.
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+    # Publish the MLflow UI to the host.
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    # Persist run metadata and model/plot artifacts outside the container.
+    volumes:
+      - ./mlflow:/mlflow
+    # Connect MLflow to the same application network.
+    networks:
+      - ai-commerce-network
+    # Verify the tracking server before dependent services start.
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    # Restart automatically unless a developer explicitly stops the container.
+    restart: unless-stopped
+
+  backend:
+    # Build the FastAPI image from the repository root using its service Dockerfile.
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    # Use a stable, easy-to-identify container name.
+    container_name: ai-commerce-backend
+    # Configure the API to use mounted runtime artifacts inside the container.
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8501}
+      MASTER_DATA_PATH: /app/data/processed/master_df.parquet
+      MODELS_DIR: /app/models
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    # Publish FastAPI to the host while retaining port 8000 inside the network.
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    # Reuse project data and trained models without baking them into the image.
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models:ro
+      - ./mlflow:/mlflow
+    # Wait for MLflow so API-triggered training can log immediately.
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    # Connect this service to the shared application network.
+    networks:
+      - ai-commerce-network
+    # Restart automatically unless a developer explicitly stops the container.
+    restart: unless-stopped
+
+  streamlit:
+    # Build the Streamlit image from the repository root using its service Dockerfile.
+    build:
+      context: .
+      dockerfile: streamlit/Dockerfile
+    # Use a stable, easy-to-identify container name.
+    container_name: ai-commerce-streamlit
+    # Pass the backend Docker DNS name rather than localhost to the frontend.
+    environment:
+      FASTAPI_BASE_URL: http://backend:8000/api/v1
+    # Publish Streamlit to the host while retaining port 8501 inside the network.
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    # Wait for the backend health check before starting the UI.
+    depends_on:
+      backend:
+        condition: service_healthy
+    # Connect this service to the same shared application network.
+    networks:
+      - ai-commerce-network
+    # Restart automatically unless a developer explicitly stops the container.
+    restart: unless-stopped
+
+# Create one isolated bridge network for service-to-service communication.
+networks:
+  ai-commerce-network:
+    name: ai-commerce-network
+    driver: bridge

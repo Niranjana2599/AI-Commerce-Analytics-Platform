@@ -1,0 +1,16 @@
+.git/
+.venv/
+.runtime/
+__pycache__/
+*.py[cod]
+*.ipynb
+.env
+mlflow.db
+notebooks/
+data/raw/
+data/processed/*.csv
+data/processed/*.parquet
+models/
+*.joblib
+*.pkl
+streamlit/.streamlit/
