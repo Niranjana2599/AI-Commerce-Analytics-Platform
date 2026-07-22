@@ -1,0 +1,80 @@
+# Render Blueprint for AI Commerce Analytics Platform.
+services:
+  - type: web
+    name: ai-commerce-backend
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerContext: .
+    dockerfilePath: backend/Dockerfile
+    dockerCommand: /app/scripts/start_render_backend.sh
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: checksPass
+    disk:
+      name: backend-assets
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEPLOY_ASSETS_DIR
+        value: /var/data
+      - key: MASTER_DATA_PATH
+        value: /var/data/processed/master_df.parquet
+      - key: MODELS_DIR
+        value: /var/data/models
+      - key: RAG_OPS_DIR
+        value: /var/data/rag_ops
+      - key: ASSET_BUNDLE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: RAG_LLM_ENABLED
+        value: "false"
+      # LangSmith tracing is opt-in; enter the API key in the Render dashboard.
+      - key: LANGCHAIN_TRACING_V2
+        value: "false"
+      - key: LANGCHAIN_API_KEY
+        sync: false
+      - key: LANGCHAIN_PROJECT
+        value: AI-Commerce-Analytics-Platform
+      - key: LANGCHAIN_ENDPOINT
+        value: https://api.smith.langchain.com
+      - key: MLFLOW_HOSTPORT
+        fromService:
+          type: web
+          name: ai-commerce-mlflow
+          property: hostport
+
+  - type: web
+    name: ai-commerce-streamlit
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerContext: .
+    dockerfilePath: streamlit/Dockerfile
+    healthCheckPath: /_stcore/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: FASTAPI_HOSTPORT
+        fromService:
+          type: web
+          name: ai-commerce-backend
+          property: hostport
+
+  - type: web
+    name: ai-commerce-mlflow
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerContext: .
+    dockerfilePath: backend/Dockerfile
+    dockerCommand: >-
+      sh -c 'mlflow server --backend-store-uri sqlite:////var/mlflow/mlflow.db
+      --default-artifact-root /var/mlflow/artifacts --host 0.0.0.0 --port $PORT'
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    disk:
+      name: mlflow-tracking
+      mountPath: /var/mlflow
+      sizeGB: 5

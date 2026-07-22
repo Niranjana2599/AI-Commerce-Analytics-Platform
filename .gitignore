@@ -2,6 +2,7 @@
 .runtime/
 mlflow/
 mlruns/
+rag_ops/
 __pycache__/
 *.py[cod]
 

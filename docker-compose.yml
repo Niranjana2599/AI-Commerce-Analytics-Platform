@@ -1,4 +1,84 @@
 services:
+  grafana:
+    # Grafana visualizes the Prometheus metrics and loads version-controlled dashboards.
+    image: grafana/grafana:13.1.0
+    container_name: ai-commerce-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      # Persist Grafana users, preferences, alert state, and its internal database.
+      - grafana_data:/var/lib/grafana
+      # Provision datasource, dashboards, and alert rules from source-controlled files.
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    networks:
+      - ai-commerce-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+
+  prometheus:
+    # Prometheus scrapes the API and exporter endpoints defined in prometheus.yml.
+    image: prom/prometheus:v3.12.0
+    container_name: ai-commerce-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ai-commerce-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://127.0.0.1:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+
+  node-exporter:
+    # Exposes Linux host/VM CPU, memory, disk, network, and uptime measurements.
+    image: prom/node-exporter:v1.11.1
+    container_name: ai-commerce-node-exporter
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - ai-commerce-network
+    restart: unless-stopped
+
+  cadvisor:
+    # Exposes Docker container CPU, memory, network, and start-time metrics.
+    image: gcr.io/cadvisor/cadvisor:v0.57.0
+    container_name: ai-commerce-cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - ai-commerce-network
+    restart: unless-stopped
+
   mlflow:
     # Reuse the backend image because it already installs the MLflow Python package.
     build:
@@ -46,6 +126,15 @@ services:
       MASTER_DATA_PATH: /app/data/processed/master_df.parquet
       MODELS_DIR: /app/models
       MLFLOW_TRACKING_URI: http://mlflow:5000
+      RAG_OPS_DIR: /app/rag_ops
+      RAG_LLM_ENABLED: ${RAG_LLM_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      # LangSmith tracing is optional and applies only to the RAG service code.
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-AI-Commerce-Analytics-Platform}
+      LANGCHAIN_ENDPOINT: ${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
     # Publish FastAPI to the host while retaining port 8000 inside the network.
     ports:
       - "${BACKEND_PORT:-8000}:8000"
@@ -54,6 +143,7 @@ services:
       - ./data:/app/data:ro
       - ./models:/app/models:ro
       - ./mlflow:/mlflow
+      - ./rag_ops:/app/rag_ops
     # Wait for MLflow so API-triggered training can log immediately.
     depends_on:
       mlflow:
@@ -61,6 +151,9 @@ services:
     # Connect this service to the shared application network.
     networks:
       - ai-commerce-network
+    # Allow a Dockerized backend to reach a local Ollama server on Linux and Docker Desktop.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Restart automatically unless a developer explicitly stops the container.
     restart: unless-stopped
 
@@ -92,3 +185,9 @@ networks:
   ai-commerce-network:
     name: ai-commerce-network
     driver: bridge
+
+volumes:
+  # Keep Prometheus history when containers are recreated.
+  prometheus_data:
+  # Preserve Grafana users, dashboard preferences, and alert state across recreations.
+  grafana_data:

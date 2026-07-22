@@ -1,0 +1,27 @@
+# Prometheus configuration for the local Docker Compose monitoring stack.
+global:
+  # A short interval is convenient for local development; increase it in production if needed.
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus monitors its own health and storage activity.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  # FastAPI exposes application, model, RAG, and Python process metrics here.
+  - job_name: fastapi
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:8000"]
+
+  # Host-level CPU, memory, disk, network, and uptime metrics.
+  - job_name: node_exporter
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Docker container CPU, memory, network, and start-time metrics.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
