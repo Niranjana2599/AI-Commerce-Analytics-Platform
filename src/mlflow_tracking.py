@@ -15,7 +15,8 @@ import pandas as pd
 
 def configure_tracking() -> None:
     """Use Docker MLflow when configured, otherwise store runs locally."""
-    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns")
+    internal_hostport = os.getenv("MLFLOW_HOSTPORT")
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI") or (f"http://{internal_hostport}" if internal_hostport else "file:./mlruns")
     mlflow.set_tracking_uri(tracking_uri)
 
 
