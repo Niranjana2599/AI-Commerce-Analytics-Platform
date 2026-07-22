@@ -1,0 +1,19 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "ops"}}, "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0}, "id": 1, "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}, "targets": [{"expr": "sum(increase(prediction_requests_total[1h]))", "refId": "A"}], "title": "Predictions in the last hour", "type": "stat"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "ops"}}, "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0}, "id": 2, "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}, "targets": [{"expr": "sum(increase(prediction_errors_total[1h]))", "refId": "A"}], "title": "Prediction failures in the last hour", "type": "stat"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"decimals": 0}}, "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0}, "id": 3, "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}, "targets": [{"expr": "sum(loaded_models)", "refId": "A"}], "title": "Loaded models", "type": "stat"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "s"}}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "id": 4, "targets": [{"expr": "histogram_quantile(0.95, sum by (le, model_name) (rate(prediction_latency_seconds_bucket[5m])))", "legendFormat": "{{model_name}}", "refId": "A"}], "title": "Prediction latency (p95)", "type": "timeseries"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "s"}}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "id": 5, "targets": [{"expr": "histogram_quantile(0.95, sum by (le, model_name) (rate(model_loading_seconds_bucket[1h])))", "legendFormat": "{{model_name}}", "refId": "A"}], "title": "Model loading time (p95)", "type": "timeseries"},
+    {"datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}, "id": 6, "targets": [{"expr": "sum by (model_name) (increase(prediction_requests_total{outcome=\"success\"}[1h]))", "legendFormat": "{{model_name}}", "refId": "A"}], "title": "Successful predictions by model", "type": "bargauge"},
+    {"datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}, "id": 7, "targets": [{"expr": "sum by (model_name) (increase(prediction_errors_total[1h]))", "legendFormat": "{{model_name}}", "refId": "A"}], "title": "Prediction failures by model", "type": "table"}
+  ],
+  "schemaVersion": 41,
+  "tags": ["machine-learning", "models", "prometheus"],
+  "time": {"from": "now-1h", "to": "now"},
+  "title": "Machine Learning Monitoring",
+  "uid": "ai-commerce-ml",
+  "version": 1
+}

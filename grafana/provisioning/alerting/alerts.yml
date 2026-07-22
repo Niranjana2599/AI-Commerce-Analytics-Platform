@@ -1,0 +1,162 @@
+# Grafana-managed alert rules. Add a contact point in Grafana before enabling notifications.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: AI Commerce Platform Alerts
+    folder: AI Commerce Monitoring
+    interval: 1m
+    rules:
+      - uid: ai-commerce-api-down
+        title: API Down
+        condition: C
+        for: 2m
+        noDataState: Alerting
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 300, to: 0}
+            model: {expr: 'up{job="fastapi"}', instant: true, refId: A}
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {expression: A, reducer: last, refId: B, type: reduce}
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {conditions: [{evaluator: {params: [1], type: lt}, operator: {type: and}, query: {params: [C]}, reducer: {params: [], type: last}, type: query}], expression: B, refId: C, type: threshold}
+        annotations: {summary: FastAPI is not being scraped by Prometheus.}
+        labels: {severity: critical, component: api}
+
+      - uid: ai-commerce-high-latency
+        title: High API Latency
+        condition: C
+        for: 5m
+        noDataState: NoData
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 300, to: 0}
+            model: {expr: 'histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))', instant: true, refId: A}
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {expression: A, reducer: last, refId: B, type: reduce}
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {conditions: [{evaluator: {params: [1], type: gt}, operator: {type: and}, query: {params: [C]}, reducer: {params: [], type: last}, type: query}], expression: B, refId: C, type: threshold}
+        annotations: {summary: FastAPI p95 latency is above one second.}
+        labels: {severity: warning, component: api}
+
+      - uid: ai-commerce-high-error-rate
+        title: High API Error Rate
+        condition: C
+        for: 5m
+        noDataState: NoData
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 300, to: 0}
+            model: {expr: 'sum(rate(http_errors_total[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1)', instant: true, refId: A}
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {expression: A, reducer: last, refId: B, type: reduce}
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {conditions: [{evaluator: {params: [0.05], type: gt}, operator: {type: and}, query: {params: [C]}, reducer: {params: [], type: last}, type: query}], expression: B, refId: C, type: threshold}
+        annotations: {summary: FastAPI 5xx error rate is above five percent.}
+        labels: {severity: warning, component: api}
+
+      - uid: ai-commerce-prediction-failures
+        title: Prediction Failures
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 300, to: 0}
+            model: {expr: 'sum(increase(prediction_errors_total[5m]))', instant: true, refId: A}
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {expression: A, reducer: last, refId: B, type: reduce}
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {conditions: [{evaluator: {params: [0], type: gt}, operator: {type: and}, query: {params: [C]}, reducer: {params: [], type: last}, type: query}], expression: B, refId: C, type: threshold}
+        annotations: {summary: One or more model predictions failed in the last five minutes.}
+        labels: {severity: warning, component: ml}
+
+      - uid: ai-commerce-chatbot-failures
+        title: Chatbot Failures
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 300, to: 0}
+            model: {expr: 'increase(chatbot_errors_total[5m])', instant: true, refId: A}
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {expression: A, reducer: last, refId: B, type: reduce}
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {conditions: [{evaluator: {params: [0], type: gt}, operator: {type: and}, query: {params: [C]}, reducer: {params: [], type: last}, type: query}], expression: B, refId: C, type: threshold}
+        annotations: {summary: One or more RAG chatbot requests failed in the last five minutes.}
+        labels: {severity: warning, component: rag}
+
+      - uid: ai-commerce-high-cpu
+        title: High CPU Usage
+        condition: C
+        for: 5m
+        noDataState: NoData
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 300, to: 0}
+            model: {expr: '1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))', instant: true, refId: A}
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {expression: A, reducer: last, refId: B, type: reduce}
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {conditions: [{evaluator: {params: [0.85], type: gt}, operator: {type: and}, query: {params: [C]}, reducer: {params: [], type: last}, type: query}], expression: B, refId: C, type: threshold}
+        annotations: {summary: Host or Docker VM CPU usage is above 85 percent.}
+        labels: {severity: warning, component: infrastructure}
+
+      - uid: ai-commerce-high-memory
+        title: High Memory Usage
+        condition: C
+        for: 5m
+        noDataState: NoData
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 300, to: 0}
+            model: {expr: '1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)', instant: true, refId: A}
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {expression: A, reducer: last, refId: B, type: reduce}
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model: {conditions: [{evaluator: {params: [0.85], type: gt}, operator: {type: and}, query: {params: [C]}, reducer: {params: [], type: last}, type: query}], expression: B, refId: C, type: threshold}
+        annotations: {summary: Host or Docker VM memory usage is above 85 percent.}
+        labels: {severity: warning, component: infrastructure}

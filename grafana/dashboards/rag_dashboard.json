@@ -1,0 +1,19 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "ops"}}, "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0}, "id": 1, "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}, "targets": [{"expr": "sum(increase(chatbot_requests_total[1h]))", "refId": "A"}], "title": "Chatbot requests in the last hour", "type": "stat"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "ops"}}, "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0}, "id": 2, "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}, "targets": [{"expr": "increase(chatbot_errors_total[1h])", "refId": "A"}], "title": "Chatbot failures in the last hour", "type": "stat"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "short"}}, "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0}, "id": 3, "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}, "targets": [{"expr": "rate(rag_retrieved_documents_sum[5m]) / clamp_min(rate(rag_retrieved_documents_count[5m]), 1)", "refId": "A"}], "title": "Average retrieved documents", "type": "gauge"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "s"}}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "id": 4, "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(rag_retriever_latency_seconds_bucket[5m])))", "refId": "A"}, {"expr": "histogram_quantile(0.95, sum by (le) (rate(rag_llm_latency_seconds_bucket[5m])))", "refId": "B"}, {"expr": "histogram_quantile(0.95, sum by (le) (rate(rag_latency_seconds_bucket[5m])))", "refId": "C"}], "title": "RAG latency (p95): retriever, LLM, total", "type": "timeseries"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "s"}}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "id": 5, "targets": [{"expr": "sum(rate(rag_latency_seconds_sum[5m])) / clamp_min(sum(rate(rag_latency_seconds_count[5m])), 1)", "refId": "A"}], "title": "Average total chatbot response time", "type": "timeseries"},
+    {"datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}, "id": 6, "options": {"legend": {"displayMode": "table", "placement": "right"}}, "targets": [{"expr": "sum by (outcome) (increase(chatbot_requests_total[1h]))", "legendFormat": "{{outcome}}", "refId": "A"}], "title": "Chatbot request outcomes", "type": "piechart"},
+    {"datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}, "id": 7, "targets": [{"expr": "rate(chatbot_errors_total[5m]) / clamp_min(sum(rate(chatbot_requests_total[5m])), 1)", "refId": "A"}], "title": "Chatbot error rate", "type": "timeseries"}
+  ],
+  "schemaVersion": 41,
+  "tags": ["rag", "ollama", "chatbot", "prometheus"],
+  "time": {"from": "now-1h", "to": "now"},
+  "title": "RAG Chatbot Monitoring",
+  "uid": "ai-commerce-rag",
+  "version": 1
+}

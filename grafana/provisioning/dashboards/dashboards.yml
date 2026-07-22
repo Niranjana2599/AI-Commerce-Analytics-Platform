@@ -1,0 +1,14 @@
+# Load dashboard JSON files mounted from the repository on every Grafana startup.
+apiVersion: 1
+
+providers:
+  - name: ai-commerce-dashboards
+    orgId: 1
+    folder: AI Commerce Monitoring
+    folderUid: ai-commerce-monitoring
+    type: file
+    disableDeletion: false
+    editable: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

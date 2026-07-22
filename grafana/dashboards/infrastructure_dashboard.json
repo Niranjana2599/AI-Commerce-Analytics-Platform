@@ -1,0 +1,20 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "percentunit"}}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "id": 1, "targets": [{"expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))", "legendFormat": "{{instance}}", "refId": "A"}], "title": "Host/VM CPU usage", "type": "timeseries"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "percentunit"}}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "id": 2, "targets": [{"expr": "1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)", "refId": "A"}], "title": "Host/VM memory usage", "type": "gauge"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "percentunit"}}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "id": 3, "targets": [{"expr": "1 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"})", "refId": "A"}], "title": "Host/VM disk usage", "type": "gauge"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "Bps"}}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "id": 4, "targets": [{"expr": "sum(rate(container_network_receive_bytes_total{name!=\"\"}[5m]))", "refId": "A"}, {"expr": "sum(rate(container_network_transmit_bytes_total{name!=\"\"}[5m]))", "refId": "B"}], "title": "Container network traffic", "type": "timeseries"},
+    {"datasource": {"uid": "prometheus"}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}, "id": 5, "targets": [{"expr": "up", "legendFormat": "{{job}}", "refId": "A"}], "title": "Scrape target health", "type": "table"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"decimals": 0}}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}, "id": 6, "targets": [{"expr": "sum(changes(container_start_time_seconds{name!=\"\"}[1h]))", "refId": "A"}], "title": "Container restarts (estimated, 1h)", "type": "stat"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "bytes"}}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}, "id": 7, "targets": [{"expr": "sum by (name) (container_memory_working_set_bytes{name!=\"\"})", "legendFormat": "{{name}}", "refId": "A"}], "title": "Docker container memory", "type": "bargauge"},
+    {"datasource": {"uid": "prometheus"}, "fieldConfig": {"defaults": {"unit": "percentunit"}}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}, "id": 8, "targets": [{"expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]))", "legendFormat": "{{name}}", "refId": "A"}], "title": "Docker container CPU", "type": "timeseries"}
+  ],
+  "schemaVersion": 41,
+  "tags": ["infrastructure", "docker", "prometheus"],
+  "time": {"from": "now-1h", "to": "now"},
+  "title": "Infrastructure Monitoring",
+  "uid": "ai-commerce-infrastructure",
+  "version": 1
+}
