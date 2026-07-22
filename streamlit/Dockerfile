@@ -1,5 +1,5 @@
 # Use a small, supported Python base image for the Streamlit service.
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Prevent bytecode files and flush Streamlit logs directly to Docker logs.
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -22,7 +22,7 @@ EXPOSE 8501
 
 # Check that Streamlit is serving its built-in health endpoint.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3)" || exit 1
+    CMD sh -c "python -c \"from urllib.request import urlopen; import os; urlopen('http://127.0.0.1:' + os.getenv('PORT', '8501') + '/_stcore/health', timeout=3)\"" || exit 1
 
 # Run Streamlit on every container interface; Compose injects the backend service URL.
-CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
+CMD ["sh", "-c", "streamlit run app.py --server.address=0.0.0.0 --server.port ${PORT:-8501}"]

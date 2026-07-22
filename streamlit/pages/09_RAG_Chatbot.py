@@ -31,6 +31,12 @@ if question:
             st.markdown(answer)
             if result["sources"]:
                 st.caption("Sources: " + ", ".join(result["sources"]))
+            st.caption(f"Prompt: {result['prompt_version']} | Knowledge base: {result['knowledge_base_version']}")
+            scores = result["evaluation"]
+            score_columns = st.columns(3)
+            score_columns[0].metric("Faithfulness", f"{scores['faithfulness']:.0%}")
+            score_columns[1].metric("Answer relevance", f"{scores['answer_relevance']:.0%}")
+            score_columns[2].metric("Context relevance", f"{scores['context_relevance']:.0%}")
             st.session_state.chat_history.append({"role": "assistant", "content": answer})
 
 if st.button("Clear chat"):
