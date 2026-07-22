@@ -60,14 +60,16 @@ services:
       - --path.rootfs=/host
     pid: host
     volumes:
-      - /:/host:ro,rslave
+      # Docker Desktop on Windows does not support Linux rslave propagation.
+      # A read-only host mount keeps the exporter portable for local monitoring.
+      - /:/host:ro
     networks:
       - ai-commerce-network
     restart: unless-stopped
 
   cadvisor:
     # Exposes Docker container CPU, memory, network, and start-time metrics.
-    image: gcr.io/cadvisor/cadvisor:v0.57.0
+    image: ghcr.io/google/cadvisor:v0.57.0
     container_name: ai-commerce-cadvisor
     volumes:
       - /:/rootfs:ro
@@ -86,6 +88,10 @@ services:
       dockerfile: backend/Dockerfile
     # Use a stable name for the experiment tracking server.
     container_name: ai-commerce-mlflow
+    environment:
+      # MLflow 3.5+ validates Host headers. Allow the Compose DNS name used by
+      # training containers and the local addresses used to open the UI.
+      MLFLOW_SERVER_ALLOWED_HOSTS: "mlflow:5000,localhost:*,127.0.0.1:*"
     # Run MLflow with SQLite metadata and a persistent local artifact directory.
     command: >
       mlflow server
@@ -135,6 +141,8 @@ services:
       LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
       LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-AI-Commerce-Analytics-Platform}
       LANGCHAIN_ENDPOINT: ${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
+      # Required when a LangSmith API key can access multiple workspaces.
+      LANGSMITH_WORKSPACE_ID: ${LANGSMITH_WORKSPACE_ID:-}
     # Publish FastAPI to the host while retaining port 8000 inside the network.
     ports:
       - "${BACKEND_PORT:-8000}:8000"
