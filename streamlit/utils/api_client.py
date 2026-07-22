@@ -7,10 +7,16 @@ import requests
 from config import API_BASE_URL
 
 
-def api_request(method: str, path: str, *, json: dict[str, Any] | None = None) -> tuple[dict[str, Any] | list[Any] | None, str | None]:
+def api_request(
+    method: str,
+    path: str,
+    *,
+    json: dict[str, Any] | None = None,
+    timeout: float = 30,
+) -> tuple[dict[str, Any] | list[Any] | None, str | None]:
     """Call an API endpoint and return either JSON data or a user-friendly error."""
     try:
-        response = requests.request(method, f"{API_BASE_URL}{path}", json=json, timeout=30)
+        response = requests.request(method, f"{API_BASE_URL}{path}", json=json, timeout=timeout)
         response.raise_for_status()
         return response.json(), None
     except requests.Timeout:

@@ -48,7 +48,7 @@ toolbar_left, toolbar_right = st.columns([5, 1])
 with toolbar_left:
     st.caption("Live FastAPI metrics · cached for 60 seconds")
 with toolbar_right:
-    if st.button("↻ Refresh", use_container_width=True, help="Clear the cache and fetch fresh API data."):
+    if st.button("↻ Refresh", width="stretch", help="Clear the cache and fetch fresh API data."):
         load_dashboard_data.clear()
         st.rerun()
 
@@ -98,7 +98,7 @@ if metrics:
         )
         figure.update_traces(marker_line_width=0, hovertemplate="%{x}<br>$%{y:,.2f}<extra></extra>")
         figure.update_xaxes(title=None)
-        st.plotly_chart(style_figure(figure), use_container_width=True, config=PLOT_CONFIG)
+        st.plotly_chart(style_figure(figure), width="stretch", config=PLOT_CONFIG)
 
     with right:
         gauge = go.Figure(
@@ -111,7 +111,7 @@ if metrics:
                 },
             )
         )
-        st.plotly_chart(style_figure(gauge), use_container_width=True, config=PLOT_CONFIG)
+        st.plotly_chart(style_figure(gauge), width="stretch", config=PLOT_CONFIG)
 
     with st.expander("Why aren't monthly, category, state, and product charts shown?"):
         st.info(
