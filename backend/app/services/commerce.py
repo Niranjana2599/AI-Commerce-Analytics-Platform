@@ -4,12 +4,14 @@ from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+import time
 
 import joblib
 import pandas as pd
 import logging
 
 from backend.app.core.config import settings
+from backend.app.monitoring.metrics import observe_model_load, observe_prediction
 
 
 MODEL_FILES = {
@@ -35,10 +37,17 @@ def master_data() -> pd.DataFrame:
 @lru_cache(maxsize=None)
 def load_model(name: str) -> Any:
     """Lazy-load an artifact so starting the API does not load large models."""
+    started = time.perf_counter()
     path: Path = settings.models_dir / MODEL_FILES[name]
-    if not path.exists():
-        raise FileNotFoundError(f"Model artifact not found: {path}")
-    return joblib.load(path)
+    try:
+        if not path.exists():
+            raise FileNotFoundError(f"Model artifact not found: {path}")
+        model = joblib.load(path)
+    except Exception:
+        observe_model_load(name, time.perf_counter() - started, success=False)
+        raise
+    observe_model_load(name, time.perf_counter() - started, success=True)
+    return model
 
 
 def customer_metrics() -> dict[str, float | int]:
@@ -55,12 +64,18 @@ def customer_metrics() -> dict[str, float | int]:
 
 def predict(model_name: str, features: dict[str, Any]) -> dict[str, float | int | str | None]:
     """Run a standard scikit-learn-style estimator on one feature row."""
-    model = load_model(model_name)
-    frame = pd.DataFrame([features])
-    value = model.predict(frame)[0]
-    probability = None
-    if hasattr(model, "predict_proba"):
-        probability = float(model.predict_proba(frame)[0][-1])
+    started = time.perf_counter()
+    try:
+        model = load_model(model_name)
+        frame = pd.DataFrame([features])
+        value = model.predict(frame)[0]
+        probability = None
+        if hasattr(model, "predict_proba"):
+            probability = float(model.predict_proba(frame)[0][-1])
+    except Exception:
+        observe_prediction(model_name, time.perf_counter() - started, success=False)
+        raise
+    observe_prediction(model_name, time.perf_counter() - started, success=True)
     return {"prediction": value.item() if hasattr(value, "item") else value, "probability": probability}
 
 
@@ -69,9 +84,15 @@ def predict_delivery_delay(order_purchase_date: date, estimated_delivery_date: d
 
     Replace this with a saved delay estimator when one is trained and added to MODEL_FILES.
     """
-    planned_days = max((estimated_delivery_date - order_purchase_date).days, 0)
-    predicted_delay = round(max(planned_days - 7, 0) * 0.15, 1)
-    risk = "high" if predicted_delay >= 3 else "medium" if predicted_delay >= 1 else "low"
+    started = time.perf_counter()
+    try:
+        planned_days = max((estimated_delivery_date - order_purchase_date).days, 0)
+        predicted_delay = round(max(planned_days - 7, 0) * 0.15, 1)
+        risk = "high" if predicted_delay >= 3 else "medium" if predicted_delay >= 1 else "low"
+    except Exception:
+        observe_prediction("delivery_delay", time.perf_counter() - started, success=False)
+        raise
+    observe_prediction("delivery_delay", time.perf_counter() - started, success=True)
     return {"predicted_delay_days": predicted_delay, "risk": risk}
 
 
@@ -95,11 +116,14 @@ def classify_sentiment(review: str) -> str:
     Existing ML models remain the preferred path. The small fallback protects the
     dashboard while a serialized legacy model is retrained through MLflow.
     """
+    started = time.perf_counter()
     try:
         model = load_model("sentiment")
         label = model.predict([review])[0]
+        observe_prediction("sentiment", time.perf_counter() - started, success=True)
         return str(label)
     except Exception as error:
+        observe_prediction("sentiment", time.perf_counter() - started, success=False)
         LOGGER.warning("Sentiment model unavailable; using keyword fallback: %s", error)
         text = review.lower()
         negative_words = {"late", "bad", "worst", "broken", "poor", "disappointed", "terrible", "hate"}

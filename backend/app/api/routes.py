@@ -7,12 +7,14 @@ from backend.app.schemas.contracts import (
     ChatRequest, ChatResponse, CustomerMetricsResponse, DeliveryDelayRequest,
     DeliveryDelayResponse, ForecastPoint, ForecastRequest, HealthResponse,
     ModelPredictionRequest, PredictionResponse, RecommendationResponse,
-    SentimentRequest, SentimentResponse,
+    RAGMetricsResponse, SentimentRequest, SentimentResponse,
 )
 from backend.app.services.commerce import (
     classify_sentiment, customer_metrics, demand_forecast, predict,
-    predict_delivery_delay, recommend, retrieve,
+    predict_delivery_delay, recommend,
 )
+from backend.app.llmops.observability import metrics_summary
+from backend.app.services.rag_service import answer_question
 
 
 router = APIRouter()
@@ -88,7 +90,12 @@ def forecast_demand(request: ForecastRequest) -> list[ForecastPoint]:
 @router.post("/chat", response_model=ChatResponse, tags=["RAG Chatbot"])
 def rag_chat(request: ChatRequest) -> ChatResponse:
     try:
-        answer, sources = retrieve(request.question, request.limit)
-        return ChatResponse(answer=answer, sources=sources)
+        return ChatResponse(**answer_question(request.question, request.limit))
     except Exception as error:
         raise service_error(error) from error
+
+
+@router.get("/rag/metrics", response_model=RAGMetricsResponse, tags=["RAG Operations"])
+def rag_metrics() -> RAGMetricsResponse:
+    """Return aggregated, privacy-safe RAG operational metrics."""
+    return RAGMetricsResponse(**metrics_summary())

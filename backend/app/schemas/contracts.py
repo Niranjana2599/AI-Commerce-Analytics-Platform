@@ -69,3 +69,14 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: list[str]
+    prompt_version: str
+    knowledge_base_version: str
+    evaluation: dict[str, float]
+
+
+class RAGMetricsResponse(BaseModel):
+    query_count: int
+    averages: dict[str, float]
+    latency_ms: dict[str, float]
+    prompt_versions: dict[str, int]
+    knowledge_base_versions: dict[str, int]

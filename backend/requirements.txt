@@ -6,6 +6,8 @@ scikit-learn==1.7.2
 xgboost
 joblib
 mlflow
+langsmith>=0.3.13
+prometheus-client
 matplotlib
 pytest
 httpx

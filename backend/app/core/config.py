@@ -16,6 +16,13 @@ class Settings:
     allowed_origins: tuple[str, ...] = tuple(os.getenv("CORS_ORIGINS", "*").split(","))
     data_path: Path = Path(os.getenv("MASTER_DATA_PATH", PROJECT_ROOT / "data/processed/master_df.parquet"))
     models_dir: Path = Path(os.getenv("MODELS_DIR", PROJECT_ROOT / "models"))
+    rag_ops_dir: Path = Path(os.getenv("RAG_OPS_DIR", PROJECT_ROOT / "rag_ops"))
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
+    ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.2")
+    rag_llm_enabled: bool = os.getenv("RAG_LLM_ENABLED", "false").lower() == "true"
+    langsmith_tracing_enabled: bool = os.getenv("LANGSMITH_TRACING", os.getenv("LANGCHAIN_TRACING_V2", "false")).lower() == "true"
+    langsmith_project: str = os.getenv("LANGCHAIN_PROJECT", "AI-Commerce-Analytics-Platform")
+    langsmith_endpoint: str = os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
 
 
 settings = Settings()
