@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    name: Test and build
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      APP_ENV: development
+
+    steps:
+      # Fetch the commit or pull-request revision being checked.
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Use the project-standard Python version and cache wheels by requirement files.
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            streamlit/requirements.txt
+
+      # Install runtime packages, MLflow, and the tools used by CI.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt
+          python -m pip install -r streamlit/requirements.txt
+          python -m pip install black flake8 pytest-cov
+
+      # Confirm FastAPI, Streamlit, and MLflow packages are importable.
+      - name: Verify imports
+        run: |
+          python -c "from backend.app.main import app; assert app.title"
+          python -c "import streamlit, mlflow; print('Streamlit and MLflow imports passed')"
+
+      # Run backend tests and write machine-readable reports for upload.
+      - name: Run unit tests and coverage
+        run: |
+          mkdir -p reports
+          pytest backend/tests --junitxml=reports/junit.xml --cov=backend --cov-report=xml:reports/coverage.xml
+
+      # Check code formatting without modifying repository files.
+      - name: Check formatting
+        run: black --check --line-length 200 backend streamlit src pipelines
+
+      # Report common Python errors while allowing the project line-length convention.
+      - name: Lint code
+        run: flake8 backend streamlit src pipelines --max-line-length=200 --extend-ignore=E203,W503
+
+      # Ensure the FastAPI health endpoint can start without model/data artifacts.
+      - name: Verify FastAPI starts
+        run: |
+          uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 > /tmp/fastapi.log 2>&1 &
+          for attempt in {1..10}; do curl --fail http://127.0.0.1:8000/api/v1/health && break || sleep 2; done
+          curl --fail http://127.0.0.1:8000/api/v1/health
+          cat /tmp/fastapi.log
+
+      # Ensure the Streamlit server starts and exposes its own health endpoint.
+      - name: Verify Streamlit starts
+        run: |
+          streamlit run streamlit/app.py --server.headless true --server.port 8501 > /tmp/streamlit.log 2>&1 &
+          for attempt in {1..10}; do curl --fail http://127.0.0.1:8501/_stcore/health && break || sleep 2; done
+          curl --fail http://127.0.0.1:8501/_stcore/health
+          cat /tmp/streamlit.log
+
+      # Validate service wiring and then build every Compose image.
+      - name: Validate Docker Compose
+        run: docker compose config --quiet
+
+      - name: Build Docker images
+        run: docker compose build
+
+      # Preserve reports even when an earlier test step fails.
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: reports/junit.xml
+          if-no-files-found: warn
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: reports/coverage.xml
+          if-no-files-found: warn
