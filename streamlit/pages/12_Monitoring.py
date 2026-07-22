@@ -38,6 +38,13 @@ def style_figure(figure, *, height: int = 350):
     return figure
 
 
+def hex_to_rgba(color: str, alpha: float = 0.13) -> str:
+    """Convert a six-digit hex color to Plotly-compatible RGBA."""
+    value = color.lstrip("#")
+    red, green, blue = (int(value[index:index + 2], 16) for index in (0, 2, 4))
+    return f"rgba({red},{green},{blue},{alpha})"
+
+
 @st.cache_data(ttl=15, show_spinner=False)
 def service_health() -> dict[str, dict[str, str | bool]]:
     """Probe only non-sensitive health endpoints."""
@@ -180,7 +187,11 @@ for index, (title, (query, y_label, color)) in enumerate(chart_queries.items()):
         else:
             figure = px.line(frame, x="Time", y="Value", color="Series", title=title, labels={"Value": y_label})
             if frame["Series"].nunique() == 1:
-                figure.update_traces(line=dict(color=color, width=3), fill="tozeroy", fillcolor=f"{color}22")
+                figure.update_traces(
+                    line=dict(color=color, width=3),
+                    fill="tozeroy",
+                    fillcolor=hex_to_rgba(color),
+                )
                 figure.update_layout(showlegend=False)
             st.plotly_chart(style_figure(figure), width="stretch", config=PLOT_CONFIG)
 
