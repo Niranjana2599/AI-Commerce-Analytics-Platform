@@ -6,8 +6,25 @@ scikit-learn==1.7.2
 xgboost
 joblib
 mlflow
+
+# LangChain RAG
+langchain
+langchain-community
+langchain-text-splitters
+langchain-huggingface
+langchain-ollama
+
+# Embeddings / FAISS
+sentence-transformers
+faiss-cpu
+
+# LLMOps
 langsmith>=0.3.13
+
+# Monitoring
 prometheus-client
+
+# Utilities / testing
 matplotlib
 pytest
 httpx
