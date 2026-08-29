@@ -19,7 +19,10 @@ class CustomerMetricsResponse(BaseModel):
 
 
 class ModelPredictionRequest(BaseModel):
-    features: dict[str, Any] = Field(..., description="Feature names and values expected by the trained model.")
+    features: dict[str, Any] = Field(
+        ...,
+        description="Feature names and values expected by the trained model.",
+    )
 
 
 class PredictionResponse(BaseModel):
@@ -44,7 +47,11 @@ class RecommendationResponse(BaseModel):
 
 
 class SentimentRequest(BaseModel):
-    review: str = Field(..., min_length=1, max_length=5_000)
+    review: str = Field(
+        ...,
+        min_length=1,
+        max_length=5_000,
+    )
 
 
 class SentimentResponse(BaseModel):
@@ -53,7 +60,11 @@ class SentimentResponse(BaseModel):
 
 class ForecastRequest(BaseModel):
     product_id: str | None = None
-    days: int = Field(default=7, ge=1, le=90)
+    days: int = Field(
+        default=7,
+        ge=1,
+        le=90,
+    )
 
 
 class ForecastPoint(BaseModel):
@@ -62,8 +73,16 @@ class ForecastPoint(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    question: str = Field(..., min_length=1, max_length=2_000)
-    limit: int = Field(default=5, ge=1, le=10)
+    question: str = Field(
+        ...,
+        min_length=1,
+        max_length=2_000,
+    )
+    limit: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+    )
 
 
 class ChatResponse(BaseModel):
