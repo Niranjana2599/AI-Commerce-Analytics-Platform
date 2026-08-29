@@ -1,4 +1,9 @@
 services:
+
+  # ============================================================
+  # Grafana
+  # ============================================================
+
   grafana:
     image: grafana/grafana:13.1.0
     container_name: ai-commerce-grafana
@@ -25,7 +30,13 @@ services:
       - ai-commerce-network
 
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://127.0.0.1:3000/api/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "http://127.0.0.1:3000/api/health"
+        ]
       interval: 30s
       timeout: 5s
       start_period: 30s
@@ -33,6 +44,10 @@ services:
 
     restart: unless-stopped
 
+
+  # ============================================================
+  # Prometheus
+  # ============================================================
 
   prometheus:
     image: prom/prometheus:v3.12.0
@@ -54,7 +69,13 @@ services:
       - ai-commerce-network
 
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://127.0.0.1:9090/-/healthy"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "http://127.0.0.1:9090/-/healthy"
+        ]
       interval: 30s
       timeout: 5s
       start_period: 20s
@@ -62,6 +83,10 @@ services:
 
     restart: unless-stopped
 
+
+  # ============================================================
+  # Node Exporter
+  # ============================================================
 
   node-exporter:
     image: prom/node-exporter:v1.11.1
@@ -81,6 +106,10 @@ services:
     restart: unless-stopped
 
 
+  # ============================================================
+  # cAdvisor
+  # ============================================================
+
   cadvisor:
     image: ghcr.io/google/cadvisor:v0.57.0
     container_name: ai-commerce-cadvisor
@@ -97,6 +126,10 @@ services:
 
     restart: unless-stopped
 
+
+  # ============================================================
+  # MLflow
+  # ============================================================
 
   mlflow:
     build:
@@ -140,6 +173,10 @@ services:
     restart: unless-stopped
 
 
+  # ============================================================
+  # FastAPI Backend
+  # ============================================================
+
   backend:
     build:
       context: .
@@ -148,52 +185,58 @@ services:
     container_name: ai-commerce-backend
 
     environment:
-      APP_ENV: ${APP_ENV:-production}
 
+      # Application
+      APP_ENV: ${APP_ENV:-production}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8501}
 
+      # Data
       MASTER_DATA_PATH: /app/data/processed/master_df.parquet
-
       MODELS_DIR: /app/models
 
+      # MLflow
       MLFLOW_TRACKING_URI: http://mlflow:5000
 
+      # RAG operations
       RAG_OPS_DIR: /app/rag_ops
 
       # --------------------------------------------------------
       # RAG / Ollama
       # --------------------------------------------------------
 
-      # Enable actual LLM generation through Ollama.
-      RAG_LLM_ENABLED: ${RAG_LLM_ENABLED:-true}
+      # Enable LLM generation.
+      RAG_LLM_ENABLED: "true"
 
-      # Ollama is running on the Windows host.
+      # Ollama runs on the Windows host.
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
 
-      # Local Ollama model.
+      # Installed Ollama model.
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
 
       # --------------------------------------------------------
-      # Optional LangSmith tracing
+      # LangSmith
       # --------------------------------------------------------
 
       LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
-
       LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
-
       LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-AI-Commerce-Analytics-Platform}
-
       LANGCHAIN_ENDPOINT: ${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
-
       LANGSMITH_WORKSPACE_ID: ${LANGSMITH_WORKSPACE_ID:-}
 
     ports:
       - "${BACKEND_PORT:-8000}:8000"
 
     volumes:
+      # Prepared dataset
       - ./data:/app/data:ro
+
+      # Trained ML artifacts
       - ./models:/app/models:ro
+
+      # MLflow metadata and artifacts
       - ./mlflow:/mlflow
+
+      # RAG operational artifacts
       - ./rag_ops:/app/rag_ops
 
     depends_on:
@@ -203,13 +246,17 @@ services:
     networks:
       - ai-commerce-network
 
-    # Allows the Docker container to access Ollama
-    # running on the Windows host.
+    # Allows Docker backend to reach
+    # Ollama running on the Windows host.
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
     restart: unless-stopped
 
+
+  # ============================================================
+  # Streamlit Frontend
+  # ============================================================
 
   streamlit:
     build:
@@ -234,9 +281,9 @@ services:
     restart: unless-stopped
 
 
-# ------------------------------------------------------------
-# Shared application network
-# ------------------------------------------------------------
+# ==============================================================
+# Network
+# ==============================================================
 
 networks:
   ai-commerce-network:
@@ -244,10 +291,12 @@ networks:
     driver: bridge
 
 
-# ------------------------------------------------------------
-# Persistent volumes
-# ------------------------------------------------------------
+# ==============================================================
+# Persistent Volumes
+# ==============================================================
 
 volumes:
+
   prometheus_data:
+
   grafana_data:
