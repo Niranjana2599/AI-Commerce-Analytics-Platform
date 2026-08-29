@@ -1,4 +1,4 @@
-"""Unified operational monitoring backed by Prometheus and service health APIs."""
+"""Unified platform monitoring backed by Prometheus and service health APIs."""
 
 from datetime import datetime, timedelta, timezone
 import os
@@ -103,7 +103,7 @@ def prometheus_range(query: str, hours: int) -> tuple[pd.DataFrame, str | None]:
 page_hero(
     "Platform observability",
     "System monitoring",
-    "Track live service health, API traffic, prediction activity, latency, errors, and container resource usage from one workspace.",
+    "Track service health, API traffic, prediction activity, latency, errors, and container resource usage from one workspace.",
 )
 
 control_column, timestamp_column = st.columns([1, 4])
@@ -198,9 +198,9 @@ for index, (title, (query, y_label, color)) in enumerate(chart_queries.items()):
 section_heading("Monitoring tools", "Open the dedicated interface for deeper investigation.")
 tool_columns = st.columns(4)
 tools = [
-    ("Prometheus", "Build PromQL queries and inspect scrape targets.", "http://localhost:9090"),
-    ("Grafana", "View dashboards, alerts, and infrastructure trends.", "http://localhost:3000"),
-    ("MLflow", "Inspect experiments, metrics, parameters, and artifacts.", "http://localhost:5000"),
+    ("Prometheus", "Build PromQL queries and inspect scrape targets.", PROMETHEUS_URL),
+    ("Grafana", "View dashboards, alerts, and infrastructure trends.", GRAFANA_URL),
+    ("MLflow", "Inspect experiments, metrics, parameters, and artifacts.", MLFLOW_URL),
     ("LangSmith", "Inspect optional RAG traces and evaluations.", "https://smith.langchain.com"),
 ]
 for column, (name, description, url) in zip(tool_columns, tools):
@@ -214,7 +214,8 @@ with st.expander("Metric definitions and limitations"):
         - API and prediction totals are process-lifetime Prometheus counters and reset when the backend container restarts.
         - Active models counts artifacts loaded in the current FastAPI process; models load when their endpoints are used.
         - CPU and memory depend on cAdvisor being successfully scraped by Prometheus.
-        - LangSmith is a separate hosted RAG tracing service and is not managed by Prometheus.
+        - This page monitors platform-wide infrastructure and API activity; detailed RAG quality and FAISS/LLM stages are shown in RAG Operations.
+        - LangSmith is a separate hosted service for optional LangChain RAG tracing and is not managed by Prometheus.
         - MLflow records explicitly instrumented training runs; ordinary Streamlit interactions do not automatically create MLflow runs.
         """
     )

@@ -27,9 +27,9 @@ SCORE_LABELS = {
     "context_relevance": "Context relevance",
 }
 LATENCY_LABELS = {
-    "retrieval": "Retrieval",
-    "prompt": "Prompt / generation",
-    "total": "Total execution",
+    "retrieval": "FAISS retrieval",
+    "prompt": "LLM generation",
+    "total": "Total RAG execution",
 }
 
 
@@ -60,7 +60,40 @@ def metric_value(mapping: dict, key: str) -> float:
 page_hero(
     "LLMOps observability",
     "RAG operations dashboard",
-    "Monitor privacy-safe RAG quality, latency, and artifact-version usage without storing questions or generated answers here.",
+    "Monitor the LangChain RAG pipeline, retrieval quality, LLM latency, and versioned knowledge-base usage.",
+)
+
+section_heading(
+    "RAG architecture",
+    "Operational view of the retrieval and generation pipeline."
+)
+
+rag_columns = st.columns(5)
+
+rag_steps = [
+    ("01", "Knowledge Base", "Products, customer reviews, policies/FAQs, and dashboard metrics."),
+    ("02", "Embeddings", "Local Hugging Face sentence-transformer embeddings."),
+    ("03", "FAISS", "Vector similarity search over embedded chunks."),
+    ("04", "LangChain", "Retrieval, prompt construction, and RAG orchestration."),
+    ("05", "Ollama / Llama 3.2", "Local LLM generation using retrieved context."),
+]
+
+for column, (step, title, description) in zip(rag_columns, rag_steps):
+    with column:
+        st.markdown(
+            f"""
+            <div class="module-card">
+                <div class="eyebrow">{step}</div>
+                <h3>{title}</h3>
+                <p>{description}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+st.caption(
+    "Knowledge Base → Embeddings → FAISS → LangChain Retriever → "
+    "Prompt → Ollama/Llama 3.2 → Grounded Answer"
 )
 
 refresh_column, snapshot_column, timestamp_column = st.columns([1, 1, 3])
@@ -158,7 +191,10 @@ if metrics:
             st.plotly_chart(style_figure(evaluation_chart, height=340), width="stretch", config=PLOT_CONFIG)
 
     if latency:
-        section_heading("Latency profile", "Compare mean and 95th-percentile execution times by RAG stage.")
+        section_heading(
+    "RAG latency profile",
+    "Compare FAISS retrieval, LLM generation, and total RAG execution time."
+)
         latency_rows = []
         for prefix, label in LATENCY_LABELS.items():
             latency_rows.extend(
@@ -184,7 +220,10 @@ if metrics:
             ((label, metric_value(latency, f"{prefix}_mean")) for prefix, label in LATENCY_LABELS.items()),
             key=lambda item: item[1],
         )
-        st.info(f"Highest mean latency: **{bottleneck[0]}** at **{bottleneck[1]:,.1f} ms**.")
+        st.info(
+    f"Highest mean latency stage: **{bottleneck[0]}** "
+    f"at **{bottleneck[1]:,.1f} ms**."
+)
 
     section_heading("Artifact versions", "Track which prompt and knowledge-base versions produced logged responses.")
     prompt_column, knowledge_column = st.columns(2)
@@ -215,10 +254,10 @@ else:
 section_heading("Observability services", "Use each tool for the telemetry it is designed to manage.")
 service_columns = st.columns(4)
 service_descriptions = {
-    "Prometheus": "Raw application and infrastructure metrics",
-    "Grafana": "Provisioned dashboards and operational trends",
-    "MLflow": "Training experiments, parameters, metrics, and artifacts",
-    "LangSmith": "Optional RAG traces, debugging, and evaluations",
+    "Prometheus": "Application and infrastructure metrics",
+    "Grafana": "Operational dashboards and trends",
+    "MLflow": "ML experiments, parameters, metrics, and artifacts",
+    "LangSmith": "Optional LangChain RAG traces and evaluations",
 }
 for column, (name, url) in zip(service_columns, SERVICE_LINKS.items()):
     with column:
@@ -231,10 +270,13 @@ for column, (name, url) in zip(service_columns, SERVICE_LINKS.items()):
 with st.expander("Data coverage and monitoring boundaries"):
     st.markdown(
         """
-        - This page uses the existing `/rag/metrics` endpoint and displays aggregate, privacy-safe event data.
-        - Query text and generated answers are not included in this operational response.
-        - The endpoint does not return a timestamped request series or error count, so this page does not create request-rate or error-rate charts.
-        - Use Grafana and Prometheus for API request rate, response time, errors, CPU, memory, and container monitoring.
-        - MLflow tracks training experiments; LangSmith is separate and traces the optional RAG execution path when configured.
+        - This page uses the existing `/rag/metrics` endpoint.
+        - Metrics are aggregate and privacy-safe.
+        - Query text and generated answers are not displayed here.
+        - FAISS retrieval latency represents the vector-search stage.
+        - LLM generation latency represents the Ollama generation stage.
+        - Prometheus and Grafana handle application and infrastructure monitoring.
+        - MLflow tracks machine-learning experiments.
+        - LangSmith is optional and traces the LangChain RAG execution path when configured.
         """
     )
