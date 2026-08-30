@@ -1,23 +1,24 @@
 # AI Commerce Analytics Platform
 
-    [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-    [![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-    [![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
-    [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-    [![MLflow](https://img.shields.io/badge/MLflow-Experiment%20Tracking-0194E2)](https://mlflow.org/)
-    [![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-0467DF)](https://faiss.ai/)
+    
+[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+[![MLflow](https://img.shields.io/badge/MLflow-Experiment%20Tracking-0194E2)](https://mlflow.org/)
+[![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-0467DF)](https://faiss.ai/)
 
-    An end-to-end **AI-powered e-commerce analytics platform** combining customer analytics, predictive machine learning, NLP, recommendations, demand forecasting, and a grounded RAG-based AI analyst.
+An end-to-end **AI-powered e-commerce analytics platform** combining customer analytics, predictive machine learning, NLP, recommendations, demand forecasting, and a grounded RAG-based AI analyst.
 
-    The project is designed as a **production-style analytics and AI application**, with FastAPI for model serving, Streamlit for the user interface, MLflow for experiment tracking, FAISS for vector retrieval, Ollama/Llama 3.2 for local LLM generation, and Prometheus/Grafana for monitoring.
+The project is designed as a **production-style analytics and AI application**, with FastAPI for model serving, Streamlit for the user interface, MLflow for experiment tracking, FAISS for vector retrieval, Ollama/Llama 3.2 for local LLM generation, and Prometheus/Grafana for monitoring.
 
     ---
+ ## 🚀 Project Overview
 
-    ## 🚀 Project Overview
+The platform transforms raw e-commerce data into actionable customer and business intelligence.
 
-    The platform transforms raw e-commerce data into actionable customer and business intelligence.
-
-    It covers:
+It covers:
 
     - Data preparation and feature engineering
     - Exploratory data analysis
@@ -35,16 +36,16 @@
     - Application monitoring
     - Containerized deployment
 
-    The project demonstrates the complete journey from:
+The project demonstrates the complete journey from:
 
-    **Raw Data → Data Preparation → Feature Engineering → ML/NLP → RAG → API → Dashboard → Monitoring**
+**Raw Data → Data Preparation → Feature Engineering → ML/NLP → RAG → API → Dashboard → Monitoring**
 
     ---
 
-    # 🏗️ System Architecture
+# 🏗️ System Architecture
 
-    ```mermaid
-    flowchart LR
+```mermaid
+flowchart LR
 
         User[User]
 
