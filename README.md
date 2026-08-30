@@ -1,570 +1,776 @@
-# AI Commerce Analytics Platform
-
-[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-
-> **Project banner placeholder:** add a branded product image at `docs/images/project-banner.png` when available.
-
-An ecommerce analytics project that combines data preparation, machine-learning models, a FastAPI backend, and a Streamlit dashboard.
-
-## Recruiter snapshot
-
-An end-to-end AI commerce analytics workspace demonstrating data preparation, applied machine learning, RAG operations, Dockerized delivery, CI, experiment tracking, tracing, and production-style monitoring.
-
-```mermaid
-flowchart LR
-  User --> Streamlit[Streamlit]
-  Streamlit --> API[FastAPI]
-  API --> Data[(Prepared data)]
-  API --> Models[(Joblib artifacts)]
-  API --> MLflow
-  API --> RAG[RAG + optional Ollama]
-  API --> Prometheus --> Grafana
-  RAG -. optional .-> LangSmith
-```
-
-## Documentation
-
-- [Project Overview](docs/01_Project_Overview.md)
-- [System Architecture](docs/02_System_Architecture.md)
-- [Data Pipeline](docs/03_Data_Pipeline.md)
-- [Machine Learning](docs/04_Machine_Learning.md)
-- [RAG Architecture](docs/05_RAG_Architecture.md)
-- [API Documentation](docs/06_API_Documentation.md)
-- [Deployment Guide](docs/07_Deployment_Guide.md)
-- [Project Structure](docs/08_Project_Structure.md)
-- [Monitoring](docs/09_Monitoring.md)
-- [Recruiter README source](docs/10_README.md)
-
-## Project tech stack
-
-- **Data and ML:** Python, pandas, scikit-learn, XGBoost, joblib, PyArrow
-- **Backend:** FastAPI and Uvicorn
-- **Frontend:** Streamlit, Plotly, and requests
-- **Experiment tracking:** MLflow with SQLite metadata and local artifact storage
-- **RAG observability:** LangSmith tracing and offline evaluation (optional, RAG only)
-- **Deployment:** Docker and Docker Compose
-- **Data artifacts:** Parquet/CSV prepared datasets and saved `.joblib` models
-
-## Project structure
-
-```text
-AI-Commerce-Analytics-Platform/
-├── backend/                 # FastAPI application and API Dockerfile
-├── streamlit/               # Streamlit dashboard and UI Dockerfile
-├── src/                     # Shared data, feature, and service code
-├── pipelines/               # Repeatable data/feature/model artifact jobs
-├── data/processed/          # Prepared dataset mounted into FastAPI
-├── models/                  # Saved model artifacts mounted into FastAPI
-├── mlflow/                  # Generated MLflow SQLite metadata and artifacts (ignored by Git)
-├── rag_ops/                 # Generated privacy-safe RAG events and evaluation reports (ignored by Git)
-├── notebooks/               # Exploratory and model-development notebooks
-├── docker-compose.yml       # Starts the complete application stack
-├── prometheus.yml           # Prometheus scrape configuration
-├── grafana/                 # Provisioned Grafana datasource, alerts, and dashboards
-├── .dockerignore            # Keeps Docker build contexts small
-└── .env.example             # Docker configuration template
-```
-
-## Docker installation
-
-Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and confirm it is running:
-
-```powershell
-docker --version
-docker compose version
-```
-
-Optionally create local configuration from the template:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-The default configuration works without creating `.env`.
-
-## Cloud deployment on Render
-
-This repository includes [render.yaml](render.yaml), a Render Blueprint that deploys the Docker application as three web services in the same Render region:
-
-```text
-Browser
-  │
-  ▼
-Public Streamlit web service
-  │  (Render private network)
-  ▼
-FastAPI web service ───► MLflow web service
-  │
-  ▼
-Backend persistent disk (/var/data)
-  ├── processed/master_df.parquet
-  ├── models/*.joblib
-  └── rag_ops/ logs and evaluation reports
-```
+    # AI Commerce Analytics Platform
 
-Streamlit connects to FastAPI using Render's injected private hostname, never `localhost`. MLflow also receives an internal hostname. The backend, Streamlit, and MLflow services all bind to Render's required `$PORT`, have HTTP health checks, and send startup logs to standard output.
+    [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+    [![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+    [![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+    [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+    [![MLflow](https://img.shields.io/badge/MLflow-Experiment%20Tracking-0194E2)](https://mlflow.org/)
+    [![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-0467DF)](https://faiss.ai/)
 
-### Important Render limitation: model and data assets
+    An end-to-end **AI-powered e-commerce analytics platform** combining customer analytics, predictive machine learning, NLP, recommendations, demand forecasting, and a grounded RAG-based AI analyst.
 
-Render does not run `docker-compose.yml` as a single deployment. Its filesystem is ephemeral by default, and a persistent disk can be attached to only one service and is unavailable during image build. The backend therefore uses a paid 10 GB persistent disk and downloads assets at runtime from `ASSET_BUNDLE_URL`.
+    The project is designed as a **production-style analytics and AI application**, with FastAPI for model serving, Streamlit for the user interface, MLflow for experiment tracking, FAISS for vector retrieval, Ollama/Llama 3.2 for local LLM generation, and Prometheus/Grafana for monitoring.
 
-Host a private ZIP in S3, Cloudflare R2, Google Cloud Storage, Hugging Face, or another secure object store. The ZIP must have exactly this layout:
+    ---
 
-```text
-processed/master_df.parquet
-models/customer_churn_model.joblib
-models/customer_clv_model.joblib
-models/customer_review_sentiment_model.joblib
-models/demand_forecasting_model.joblib
-models/product_recommender_system.joblib
-models/rag_retriever.joblib
-```
+    ## 🚀 Project Overview
 
-Use a private, time-limited signed URL. Never commit the asset bundle or URL to Git.
+    The platform transforms raw e-commerce data into actionable customer and business intelligence.
 
-### Create an asset bundle locally
+    It covers:
 
-```powershell
-New-Item -ItemType Directory -Force deploy-assets/processed, deploy-assets/models
-Copy-Item data/processed/master_df.parquet deploy-assets/processed/
-Copy-Item models/*.joblib deploy-assets/models/
-Compress-Archive -Path deploy-assets/processed, deploy-assets/models -DestinationPath ai-commerce-assets.zip
-```
+    - Data preparation and feature engineering
+    - Exploratory data analysis
+    - Customer segmentation
+    - Churn prediction
+    - Customer Lifetime Value (CLV) prediction
+    - Delivery-delay risk prediction
+    - Demand forecasting
+    - Product recommendations
+    - Review sentiment analysis
+    - Retrieval-Augmented Generation (RAG)
+    - Experiment tracking
+    - API-based model serving
+    - Interactive analytics dashboards
+    - Application monitoring
+    - Containerized deployment
 
-Upload `ai-commerce-assets.zip` to your chosen private object store and generate a signed download URL.
+    The project demonstrates the complete journey from:
 
-### Deploy from the Render Dashboard
+    **Raw Data → Data Preparation → Feature Engineering → ML/NLP → RAG → API → Dashboard → Monitoring**
 
-1. Push the repository, including `render.yaml`, to GitHub.
-2. In Render, choose **New** → **Blueprint**, select the repository, and review the three services.
-3. Provide the prompted `ASSET_BUNDLE_URL` secret.
-4. After Streamlit receives its Render URL, set backend `CORS_ORIGINS` to that exact URL (for example, `https://ai-commerce-streamlit.onrender.com`).
-5. Apply the Blueprint. Render builds the Docker images, starts services, checks health endpoints, and downloads the bundle only to the backend disk.
-6. Open the generated Streamlit, FastAPI, and MLflow URLs from the Render dashboard.
+    ---
 
-Set `RAG_LLM_ENABLED=false` on Render unless you configure a reachable hosted Ollama-compatible endpoint. `host.docker.internal` points to a developer machine only in local Docker; Render cannot reach a local Ollama process.
+    # 🏗️ System Architecture
 
-### Verify the Render deployment
+    ```mermaid
+    flowchart LR
 
-- FastAPI: open `https://<backend-service>.onrender.com/api/v1/health` and expect an `ok` response.
-- Swagger: open `https://<backend-service>.onrender.com/docs`.
-- Streamlit: open the public Streamlit URL and check that customer metrics load.
-- MLflow: open the public MLflow service URL, then run a tracked pipeline from the backend shell if desired.
-- Logs: in Render, open each service's **Logs** tab. A missing or malformed asset bundle causes the backend startup script to exit with an explicit error instead of serving incomplete model endpoints.
+        User[User]
 
-### Render troubleshooting and alternatives
+        User --> Streamlit[Streamlit Dashboard]
 
-- **Backend fails at startup:** verify that the signed `ASSET_BUNDLE_URL` is still valid and the ZIP has the required `processed/` and `models/` root folders.
-- **Model endpoint fails after deploy:** inspect backend logs and confirm the matching `.joblib` exists on the backend disk.
-- **Streamlit cannot reach FastAPI:** keep both services in the same Render workspace and region; the Blueprint injects the backend's private host and port automatically.
-- **Disk cost or size is insufficient:** increase the Render disk before uploading a larger asset bundle. A service with a disk cannot scale to multiple instances.
-- **Need an unchanged Docker Compose stack:** use a small VM such as a DigitalOcean Droplet and run `docker compose up -d`. This is the simplest alternative when all services must share the exact Compose environment. For managed scaling, use Cloud Run/ECS with object storage instead of local model files.
+        Streamlit --> FastAPI[FastAPI Backend]
 
-## Start with Docker Compose
+        FastAPI --> Data[(Processed E-commerce Data)]
 
-Build images and start FastAPI, Streamlit, and the MLflow Tracking Server in the background:
+        FastAPI --> Models[(ML Joblib Artifacts)]
 
-```powershell
-docker compose up --build -d
-```
+        FastAPI --> MLflow[MLflow]
 
-Follow service logs during startup:
+        FastAPI --> RAG[RAG AI Analyst]
 
-```powershell
-docker compose logs -f
-```
+        RAG --> FAISS[(FAISS Vector Index)]
 
-## Stop and rebuild
+        RAG --> Ollama[Ollama / Llama 3.2]
 
-Stop containers while keeping data/models on the host:
+        FastAPI --> Prometheus[Prometheus]
 
-```powershell
-docker compose down
-```
+        Prometheus --> Grafana[Grafana]
 
-Rebuild after Dockerfile or dependency changes:
+        RAG -. Optional .-> LangSmith[LangSmith Tracing]
 
-```powershell
-docker compose build --no-cache
-docker compose up -d
-```
+------------------------------------------------------------------------
 
-## Service access and health checks
+# 🧩 Main Components
 
-| Service | URL | Container health check |
-| --- | --- | --- |
-| Streamlit dashboard | [http://localhost:8501](http://localhost:8501) | `http://localhost:8501/_stcore/health` |
-| FastAPI API | [http://localhost:8000](http://localhost:8000) | `http://localhost:8000/api/v1/health` |
-| Swagger UI | [http://localhost:8000/docs](http://localhost:8000/docs) | Uses the FastAPI health check |
-| MLflow UI | [http://localhost:5000](http://localhost:5000) | `http://localhost:5000/health` |
+## 1. Data Pipeline
 
-Check container status:
+The project starts with e-commerce datasets containing information such
+as:
 
-```powershell
-docker compose ps
-```
+-   Customers
+-   Orders
+-   Order items
+-   Payments
+-   Products
+-   Sellers
+-   Reviews
+-   Geolocation
 
-Both services should show `healthy`. You can also query FastAPI directly:
+The preparation pipeline:
 
-```powershell
-Invoke-RestMethod http://localhost:8000/api/v1/health
-```
+1.  Loads raw datasets
+2.  Cleans inconsistent records
+3.  Handles missing values
+4.  Performs data type conversion
+5.  Joins related datasets
+6.  Creates customer-level features
+7.  Generates the prepared master dataset
+8.  Stores the processed data in Parquet format
 
-## Docker networking and volumes
+The resulting dataset is reused by downstream analytics and
+machine-learning workflows.
 
-Compose creates the `ai-commerce-network` bridge network. Streamlit uses Docker DNS to call `http://backend:8000/api/v1`; it never uses `localhost` inside its container.
+------------------------------------------------------------------------
 
-The backend receives these read-only mounts, so large artifacts are not copied into the Docker image:
+# 📊 Customer Analytics
 
-- `./data:/app/data:ro`
-- `./models:/app/models:ro`
+The platform performs customer-level analytics using:
 
-MLflow persists experiment metadata in `./mlflow/mlflow.db` and artifacts in `./mlflow/artifacts` using a Docker volume mapping.
+-   Recency
+-   Frequency
+-   Monetary value
+-   Customer KPIs
+-   Purchase behavior
+-   Spending patterns
+-   Customer lifetime trends
 
-## MLflow experiment tracking
+## RFM Segmentation
 
-The MLflow-enabled training command supports these experiments:
+Customers are scored using:
 
-- `churn` — classification metrics, confusion matrix, ROC, PR, and feature importance
-- `clv` and `delivery_delay` — regression metrics, prediction plot, and feature importance
-- `recommendations` — Precision@K, Recall@K, MAP, and NDCG
-- `sentiment` — classification metrics, confusion matrix, ROC, and PR curves
-- `demand_forecasting` — RMSE, MAE, MAPE, and prediction plot
+-   **R --- Recency**
+-   **F --- Frequency**
+-   **M --- Monetary Value**
 
-Each run logs parameters, dataset version, random seed, feature names, Git commit hash, training duration, MLflow model artifact, and a backward-compatible joblib artifact.
+Quintile-based scoring is used to categorize customer behavior and
+identify valuable customer segments.
 
-### Start MLflow locally
+Interactive Plotly visualizations are provided through the Streamlit
+dashboard.
 
-Install project dependencies, then point MLflow at a local tracking directory:
+------------------------------------------------------------------------
 
-```powershell
-python -m pip install -r backend/requirements.txt
-$env:MLFLOW_TRACKING_URI = "file:./mlruns"
-```
+# 🤖 Machine Learning
 
-For the Docker tracking server, start the full stack instead:
+The platform contains multiple predictive ML workflows.
 
-```powershell
-docker compose up --build -d
-```
+## Customer Churn Prediction
 
-Open the MLflow UI at [http://localhost:5000](http://localhost:5000).
+Predicts whether a customer is likely to churn using customer behavioral
+features.
 
-### Log experiments
+Models explored include:
 
-With the Docker stack running, execute a training job in the backend container:
+-   XGBoost
+-   LightGBM
+-   CatBoost
 
-```powershell
-docker compose exec backend python -m pipelines.training.train churn
-docker compose exec backend python -m pipelines.training.train clv
-docker compose exec backend python -m pipelines.training.train delivery_delay
-docker compose exec backend python -m pipelines.training.train recommendations
-docker compose exec backend python -m pipelines.training.train sentiment
-docker compose exec backend python -m pipelines.training.train demand_forecasting
-```
+Model performance is evaluated using appropriate classification metrics.
 
-Run every experiment sequentially with:
+------------------------------------------------------------------------
 
-```powershell
-docker compose exec backend python -m pipelines.training.train all
-```
+## Customer Lifetime Value
 
-### Compare experiments
+Predicts customer lifetime value using customer-level behavioral and
+transactional features.
 
-1. Open the MLflow UI.
-2. Select an `AI-Commerce-*` experiment.
-3. Select two or more runs and choose **Compare**.
-4. Compare metrics, parameters, feature-importance plots, curves, and model artifacts.
+The workflow includes:
 
-### Verify MLflow
+-   Feature engineering
+-   Model training
+-   Evaluation
+-   Artifact persistence
+-   API serving
 
-```powershell
-docker compose ps
-docker compose logs mlflow
-```
+------------------------------------------------------------------------
 
-`ai-commerce-mlflow` should be healthy. After running a training command, refresh the MLflow UI and confirm that the experiment, run metrics, parameters, and artifacts appear.
+## Delivery Delay Prediction
 
-### MLflow screenshots
+The platform provides delivery-delay risk analysis based on available
+order and operational features.
 
-Add screenshots here after the first successful run:
+The implementation distinguishes between:
 
-- MLflow experiment list
-- Run comparison table
-- Feature importance, ROC, PR, or regression prediction artifacts
+-   Training experiments
+-   Current serving implementation
+-   Future model improvements
 
-## Prometheus monitoring
+This avoids claiming that an experimental model is automatically the
+production-serving model.
 
-Prometheus monitors only operational measurements. It does not collect request bodies, customer IDs, model feature values, prompts, answers, or API keys.
+------------------------------------------------------------------------
 
-### Start the monitoring stack
+## Demand Forecasting
 
-Prometheus, Node Exporter, and cAdvisor start with the standard Compose command:
+Demand forecasting is included as part of the commerce analytics
+workflow.
 
-```powershell
-docker compose up --build -d
-```
+The platform exposes forecasting functionality through FastAPI and
+presents the resulting information through the dashboard.
 
-Open the following pages:
+------------------------------------------------------------------------
 
-| Component | Address | Purpose |
-| --- | --- | --- |
-| FastAPI metrics | [http://localhost:8000/metrics](http://localhost:8000/metrics) | Raw application, model, RAG, and Python process metrics |
-| Prometheus UI | [http://localhost:9090](http://localhost:9090) | Query metrics and inspect targets |
-| Prometheus targets | [http://localhost:9090/targets](http://localhost:9090/targets) | Confirm every scrape target is `UP` |
+# 🛍️ Recommendation System
 
-[prometheus.yml](prometheus.yml) defines jobs for FastAPI, Prometheus, Node Exporter, and cAdvisor. Prometheus stores its local history in the named `prometheus_data` Docker volume.
+A content-based recommendation system is implemented using:
 
-### Application metrics
+    Product Information
+           ↓
+    Text Preprocessing
+           ↓
+    TF-IDF Vectorization
+           ↓
+    Cosine Similarity
+           ↓
+    Similar Product Recommendations
 
-- **HTTP:** `http_requests_total`, `http_request_duration_seconds`, `http_errors_total`, and `active_requests`.
-- **Models:** `prediction_requests_total`, `prediction_errors_total`, `prediction_latency_seconds`, `model_loading_seconds`, `model_loading_errors_total`, and `loaded_models`.
-- **RAG:** `chatbot_requests_total`, `chatbot_errors_total`, `rag_latency_seconds`, `rag_retriever_latency_seconds`, `rag_llm_latency_seconds`, and `rag_retrieved_documents`.
-- **System/container:** the Prometheus Python client exports API process CPU, memory, and start-time metrics on Linux. Node Exporter adds host/VM CPU, memory, disk, network, and uptime metrics. cAdvisor adds Docker container CPU, memory, network, and start-time metrics.
+The system recommends products based on content similarity rather than
+collaborative user behavior.
 
-### Useful PromQL queries
+------------------------------------------------------------------------
 
-```promql
-# API requests per second over five minutes.
-sum(rate(http_requests_total[5m]))
+# 💬 Review Sentiment Analysis
 
-# 95th-percentile request latency by endpoint.
-histogram_quantile(0.95, sum by (le, endpoint) (rate(http_request_duration_seconds_bucket[5m])))
+The review analytics pipeline supports sentiment classification.
 
-# Prediction success rate by model.
-sum by (model_name) (rate(prediction_requests_total{outcome="success"}[5m]))
-/ sum by (model_name) (rate(prediction_requests_total[5m]))
+Two approaches are included.
 
-# RAG error rate over five minutes.
-sum(rate(chatbot_errors_total[5m])) / sum(rate(chatbot_requests_total[5m]))
+### TF-IDF Baseline
 
-# Average retrieved document count.
-rate(rag_retrieved_documents_sum[5m]) / rate(rag_retrieved_documents_count[5m])
+A traditional machine-learning NLP pipeline using:
 
-# Container uptime in seconds.
-time() - container_start_time_seconds
-```
+    Review Text
+       ↓
+    Text Cleaning
+       ↓
+    TF-IDF
+       ↓
+    Classifier
+       ↓
+    Sentiment
 
-### Verification checklist
+### DistilBERT
 
-1. Run `docker compose up --build -d` and confirm `docker compose ps` shows Prometheus running.
-2. Open `/metrics` and search for `http_requests_total`.
-3. Open Prometheus **Status → Targets** and confirm `fastapi`, `prometheus`, `node_exporter`, and `cadvisor` are `UP`.
-4. Submit a churn or CLV prediction, then query `prediction_requests_total` in Prometheus.
-5. Ask the RAG chatbot a question, then query `chatbot_requests_total` and `rag_latency_seconds_count`.
-6. Stop Ollama while generation is enabled, submit another question, and confirm `chatbot_errors_total` increases if the RAG request cannot recover.
+An optional transformer-based approach providing:
 
-### Monitoring troubleshooting and best practices
+-   3-class sentiment classification
+-   Confidence scoring
 
-- **FastAPI target is down:** wait for the backend health check, then inspect `docker compose logs backend` and open `http://localhost:8000/metrics` directly.
-- **Exporter target is down:** Node Exporter and cAdvisor require Linux host paths. With Docker Desktop, they report on Docker's Linux VM rather than native Windows/macOS host metrics. Disable those services if local Docker policy blocks the required mounts; FastAPI and Prometheus monitoring continue to work.
-- **Prometheus data is missing after recreation:** use `docker compose down` rather than `docker compose down -v` to retain the named `prometheus_data` volume.
-- **Production:** do not publish Prometheus publicly. Place it behind a VPN, reverse-proxy authentication, or a private network; use bounded labels only; set retention and alerting rules appropriate to available disk; and avoid recording sensitive data in labels.
+The system therefore demonstrates both a lightweight NLP baseline and a
+transformer-based approach.
 
-## Grafana dashboards
+------------------------------------------------------------------------
 
-Grafana is provisioned automatically from the repository. It uses the internal Prometheus service, so no datasource URL needs to be configured manually.
+# 🧠 RAG AI Analyst
 
-### Start and sign in
+One of the main AI components of the project is the **RAG-based AI
+Analyst**.
 
-```powershell
-docker compose up --build -d
-docker compose ps
-```
+The chatbot allows users to ask questions about the e-commerce business
+and receive answers grounded in the project's commerce knowledge base.
 
-Open [http://localhost:3000](http://localhost:3000) and sign in with the local-development values from `.env`:
+Example:
 
-```text
-Username: admin
-Password: admin
-```
+    User:
+    What is the total revenue?
 
-Change `GRAFANA_ADMIN_PASSWORD` before using any environment beyond local development, then recreate Grafana:
+            ↓
 
-```powershell
-docker compose up -d --force-recreate grafana
-```
+    Question Processing
 
-### Provisioned resources
+            ↓
 
-- [Prometheus datasource](grafana/provisioning/datasources/prometheus.yml) connects to `http://prometheus:9090` over the Compose network.
-- [Dashboard provider](grafana/provisioning/dashboards/dashboards.yml) auto-loads JSON files into **AI Commerce Monitoring**.
-- [Alert rules](grafana/provisioning/alerting/alerts.yml) provision API down, high latency, high error rate, prediction failure, chatbot failure, high CPU, and high memory alerts. They appear in Grafana Alerting but do not send notifications until you configure a contact point.
-- [FastAPI dashboard](grafana/dashboards/api_dashboard.json), [ML dashboard](grafana/dashboards/ml_dashboard.json), [RAG dashboard](grafana/dashboards/rag_dashboard.json), and [Infrastructure dashboard](grafana/dashboards/infrastructure_dashboard.json) are version-controlled and loaded at startup.
+    FAISS Vector Retrieval
 
-Dashboards are read-only in Grafana because their source of truth is Git. To customise one, edit its JSON file, wait up to 30 seconds, and refresh Grafana. You can also import a JSON file manually from **Dashboards → New → Import**; do not reuse its UID on the same Grafana instance.
+            ↓
 
-### Dashboard PromQL reference
+    Relevant Commerce Documents
 
-| Dashboard | Examples of provisioned queries |
-| --- | --- |
-| FastAPI | `sum(rate(http_requests_total[5m]))`, `histogram_quantile(0.95, sum by (le, endpoint) (rate(http_request_duration_seconds_bucket[5m])))` |
-| ML | `sum(increase(prediction_requests_total[1h]))`, `histogram_quantile(0.95, sum by (le, model_name) (rate(prediction_latency_seconds_bucket[5m])))` |
-| RAG | `sum(increase(chatbot_requests_total[1h]))`, `histogram_quantile(0.95, sum by (le) (rate(rag_latency_seconds_bucket[5m])))` |
-| Infrastructure | `1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))`, `sum by (name) (container_memory_working_set_bytes{name!=""})` |
+            ↓
 
-The full PromQL expression for every panel is stored beside the dashboard definition in `grafana/dashboards/`.
+    Prompt Construction
 
-### Grafana verification checklist
+            ↓
 
-1. Confirm `docker compose ps` reports Grafana as healthy.
-2. Open **Connections → Data sources → Prometheus** and click **Save & test**; it should connect successfully.
-3. Open **Dashboards → AI Commerce Monitoring** and confirm all four dashboards are present.
-4. Submit a model prediction and RAG question, then refresh the ML and RAG dashboards after the next 15-second Prometheus scrape.
-5. Open **Alerting → Alert rules** and confirm all seven provisioned rules are visible.
-6. For a safe alert test, temporarily stop the backend for more than two minutes, then confirm **API Down** becomes alerting. Start it again afterwards.
+    Ollama / Llama 3.2
 
-### Grafana troubleshooting and production practices
+            ↓
 
-- **Grafana starts but has no dashboards:** inspect `docker compose logs grafana`; confirm the `grafana/` folders are mounted and JSON files are valid.
-- **Datasource is unavailable:** confirm `docker compose ps prometheus`, then open `http://localhost:9090/targets` and check that Prometheus is healthy.
-- **No data in panels:** generate API traffic, wait for one scrape interval, and run the panel query directly in Prometheus first.
-- **Dashboards do not update after editing JSON:** wait 30 seconds or restart Grafana; provisioned dashboards are overwritten from source files at startup.
-- **Production:** replace the default password with a secret, terminate TLS at a trusted reverse proxy, restrict Grafana and Prometheus to a private network, configure contact points and notification policies, back up `grafana_data`, and pin/update container images regularly.
+    Grounded Answer + Sources
 
-### Dashboard screenshots
+------------------------------------------------------------------------
 
-Add screenshots after the first successful local run:
+## 🔎 FAISS Vector Retrieval
 
-- FastAPI request and error overview
-- ML latency and prediction count dashboard
-- RAG latency and chatbot outcome dashboard
-- Infrastructure resource dashboard
-- Grafana alert rule list
+The current RAG implementation uses a **persisted FAISS vector index**.
 
-## RAG LLMOps workflow
+The vector knowledge base is stored under:
 
-The RAG chatbot includes lightweight LLMOps controls without changing other analytics models:
+    models/
+    └── faiss_rag_index/
 
-- **Prompt versioning:** [prompt_registry.py](backend/app/llmops/prompt_registry.py) stores a named, versioned prompt template. Its version is returned with every chat response.
-- **Knowledge-base versioning:** the saved retriever artifact is fingerprinted from its name, size, and modification timestamp. Each query records the active version.
-- **Privacy-safe query logging:** `rag_ops/rag_events.jsonl` stores a salted query hash, text lengths, source types, versions, latency, and evaluation scores. It never stores raw questions, retrieved context, or generated answers.
-- **Evaluation reports:** `rag_ops/evaluation_report.json` is refreshed after each query. Faithfulness, answer relevance, and context relevance are transparent token-overlap monitoring signals; use human evaluation or an LLM judge for higher-stakes quality reviews.
-- **RAG dashboard:** open the Streamlit **RAG Operations** page to review query volume, evaluation averages, latency percentiles, and prompt/knowledge-base version usage.
+The FAISS index contains vector representations of the project's
+commerce knowledge.
 
-### Optional Ollama generation
+At runtime, the backend loads the persisted vector index and retrieves
+the most relevant documents for the user's question.
 
-By default, the chatbot returns retrieved context only, preserving the existing workflow. To enable an Ollama model, copy the environment template and set:
+This avoids rebuilding the vector index for every API request.
 
-```powershell
-Copy-Item .env.example .env
-```
+------------------------------------------------------------------------
 
-```dotenv
-RAG_LLM_ENABLED=true
-OLLAMA_BASE_URL=http://host.docker.internal:11434
-OLLAMA_MODEL=llama3.2
-```
+## 🧬 RAG Retrieval Flow
 
-Start Ollama and pull the selected model on the host, then recreate the backend:
+    User Question
+          ↓
+    Question Embedding
+          ↓
+    FAISS Similarity Search
+          ↓
+    Top-K Relevant Documents
+          ↓
+    Context Construction
+          ↓
+    Versioned Prompt
+          ↓
+    Ollama / Llama 3.2
+          ↓
+    Grounded Response
+          ↓
+    Sources + Evaluation Metadata
 
-```powershell
-ollama pull llama3.2
-docker compose up --build -d
-```
+------------------------------------------------------------------------
 
-The backend communicates with Ollama only when `RAG_LLM_ENABLED=true`; if Ollama is unavailable, it falls back safely to retrieved context and continues logging retrieval operations.
+# 🦙 Local LLM
 
-### Verify RAG operations
+The project uses:
 
-1. Ask a question on the Streamlit **RAG Chatbot** page.
-2. Confirm the prompt and knowledge-base versions appear below the answer.
-3. Open **RAG Operations** to view query count, latency, and evaluation signals.
-4. Inspect `rag_ops/evaluation_report.json` locally for the generated aggregate report.
-5. Call `GET /api/v1/rag/metrics` or inspect Swagger UI for the raw dashboard payload.
+**Ollama + Llama 3.2**
 
-## LangSmith observability for the RAG chatbot
+The configured backend endpoint is:
 
-LangSmith is optional and instruments only the RAG chatbot. It does not trace, change, or send data from customer analytics, prediction models, recommendation models, sentiment analysis, or demand forecasting.
+    http://host.docker.internal:11434
 
-### Configure tracing
+The LLM is used for response generation after relevant commerce
+information has been retrieved from FAISS.
 
-1. Create a LangSmith API key in the LangSmith dashboard.
-2. Copy the environment template, then set the key locally without committing `.env`:
+This provides a local/private generation workflow without requiring a
+hosted LLM API for the core RAG demo.
 
-```powershell
-Copy-Item .env.example .env
-```
+------------------------------------------------------------------------
 
-```dotenv
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_API_KEY=<your-langsmith-api-key>
-LANGCHAIN_PROJECT=AI-Commerce-Analytics-Platform
-LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
-```
+# 🛡️ RAG Grounding and Fallback
 
-3. Restart the backend so Docker Compose passes the new values into FastAPI:
+The RAG pipeline is designed to avoid blindly generating answers.
 
-```powershell
-docker compose up --build -d backend
-```
+The workflow retrieves supporting commerce information before
+generation.
 
-The application maps these requested LangChain-compatible variable names to the current LangSmith SDK names internally. Keep tracing disabled (`false`) when working with sensitive data unless your LangSmith workspace's data handling policies have been reviewed.
+The response contains:
 
-### Traces and debugging
+-   Answer
+-   Sources
+-   Prompt version
+-   Knowledge-base version
+-   Evaluation metrics
 
-Submit a question in Streamlit's **RAG Chatbot** page, then open the configured `AI-Commerce-Analytics-Platform` project in LangSmith. Each request is grouped under the `ai_commerce_rag_pipeline` chain and includes these child runs:
+Example response structure:
 
-- `rag_retriever`: query, retrieved documents, source labels, similarity scores, chunk count, and retrieval latency.
-- `rag_prompt_template`: rendered reusable prompt and prompt version.
-- `rag_ollama_request` / `rag_llm`: model name, response latency, token counts when Ollama returns them, and nested timeout/connection failures.
-- `rag_output_parser`: normalized final answer.
+    {
+      "answer": "The total revenue is 3294778880.00, as stated in the dashboard metrics.",
+      "sources": [
+        "dashboard_metrics",
+        "dashboard_metrics",
+        "dashboard_metrics",
+        "products",
+        "products"
+      ],
+      "prompt_version": "2026-07-21.1",
+      "knowledge_base_version": "faiss-1788012552746534000",
+      "evaluation": {
+        "faithfulness": 0.571,
+        "answer_relevance": 0.75,
+        "context_relevance": 0.5
+      }
+    }
 
-Every trace carries the `ai-commerce`, `rag`, and `ollama` tags plus prompt, knowledge-base, and model metadata. Raw questions, context, prompts, and answers are visible in LangSmith by design for debugging. The local `rag_ops` files remain privacy-safe and store hashes and aggregate measurements rather than raw chat content.
+The system can also fall back to retrieved evidence when LLM generation
+is unavailable.
 
-### Run an offline RAG evaluation
+------------------------------------------------------------------------
 
-Create a LangSmith dataset with an input field named `question`. Optionally add `expected_sources` (for example, `["Product", "Review"]`) for retrieval-accuracy scoring. Run:
+# 📏 RAG Evaluation
 
-```powershell
-docker compose exec backend python -m pipelines.evaluation.evaluate_rag --dataset "AI Commerce RAG Evaluation"
-```
+The RAG system includes evaluation of:
 
-The run creates a LangSmith experiment with answer relevance, context relevance, faithfulness/groundedness, retrieval accuracy, and hallucination-risk scores. These initial scores are deterministic token-overlap proxies. For release decisions, supplement them with curated reference answers, human review, or LangSmith LLM-as-judge evaluators.
+-   Faithfulness
+-   Answer relevance
+-   Context relevance
+-   Latency
+-   Retrieval sources
 
-### LangSmith troubleshooting
+This helps distinguish between:
 
-- **No traces:** confirm `LANGCHAIN_TRACING_V2=true`, a valid API key, and the correct project name; then restart the backend.
-- **Retriever trace failed:** rebuild `models/rag_retriever.joblib` and inspect the nested exception in the LangSmith run.
-- **Ollama trace shows a timeout:** verify `OLLAMA_BASE_URL`, ensure Ollama is running, and increase the service timeout only after checking model size and host capacity.
-- **Token counts are zero:** retrieval-only mode is enabled, or the configured Ollama version did not return token counters.
-- **Sensitive data appears in traces:** disable tracing immediately, rotate the key if needed, and follow your organisation's LangSmith data-retention policy before re-enabling it.
+**retrieval quality → generation quality → final answer quality**
 
-## Troubleshooting
+rather than evaluating the chatbot only by whether an answer was
+produced.
 
-- **Port already in use:** change `BACKEND_PORT` or `STREAMLIT_PORT` in `.env`, then run `docker compose up -d` again.
-- **A service is unhealthy:** inspect logs with `docker compose logs backend` or `docker compose logs streamlit`.
-- **Model/data not found:** ensure `data/processed/master_df.parquet` and required `.joblib` files exist on the host before starting Compose.
-- **Streamlit cannot call the API:** confirm `docker compose ps` shows `backend` as healthy; Compose injects the correct `http://backend:8000/api/v1` URL.
-- **Changes are not visible:** run `docker compose up --build -d`, or use the no-cache rebuild command above after dependency changes.
-- **MLflow UI has no runs:** execute one of the `pipelines.training.train` commands and confirm `MLFLOW_TRACKING_URI` is `http://mlflow:5000` inside the backend container.
-- **Ollama generation does not run:** keep `RAG_LLM_ENABLED=false` for retrieval-only mode, or confirm the configured host URL, Ollama service, and model are available before enabling it.
+------------------------------------------------------------------------
 
-## Continuous integration (GitHub Actions)
+# 🔬 Experiment Tracking
 
-The [CI workflow](.github/workflows/ci.yml) runs on every pull request and every push to `main`. It checks imports, MLflow installation, unit tests and coverage, Black formatting, Flake8 linting, FastAPI and Streamlit startup, Docker Compose validation, and Docker image builds. Test and coverage reports are uploaded as workflow artifacts even when a check fails.
+MLflow is used to track machine-learning experiments.
 
-### Run the same checks locally
+Tracked information can include:
 
-```powershell
-python -m pip install -r backend/requirements.txt
-python -m pip install -r streamlit/requirements.txt
-python -m pip install black flake8 pytest-cov
+-   Parameters
+-   Metrics
+-   Model artifacts
+-   Evaluation results
+-   Plots
+-   Dataset context
+-   Training metadata
 
-pytest backend/tests --cov=backend --cov-report=xml
-black --check --line-length 200 backend streamlit src pipelines
-flake8 backend streamlit src pipelines --max-line-length=200 --extend-ignore=E203,W503
-docker compose config --quiet
-docker compose build
-```
+The project uses MLflow as part of the model development and operational
+workflow.
 
-### CI troubleshooting
+------------------------------------------------------------------------
 
-- **Dependency installation fails:** confirm the package supports Python 3.13, then pin a compatible version in the appropriate requirements file.
-- **Formatting or lint fails:** run the corresponding local command above; use `black --line-length 200 <path>` to apply formatting intentionally.
-- **FastAPI/Streamlit startup fails:** inspect the workflow log emitted immediately after its health check and reproduce the command locally.
-- **Docker build fails:** run `docker compose build --no-cache` and ensure files copied by Dockerfiles are not excluded by `.dockerignore`.
+# 🌐 FastAPI Backend
+
+FastAPI provides the backend API layer.
+
+Current API endpoints include:
+
+    /api/v1/analytics/customer-metrics
+    /api/v1/chat
+    /api/v1/forecast/demand
+    /api/v1/health
+    /api/v1/predictions/churn
+    /api/v1/predictions/clv
+    /api/v1/predictions/delivery-delay
+    /api/v1/rag/metrics
+    /api/v1/recommendations/{customer_id}
+    /api/v1/sentiment
+
+Interactive API documentation is available through Swagger UI.
+
+------------------------------------------------------------------------
+
+# 🖥️ Streamlit Dashboard
+
+The Streamlit application provides an interactive interface for:
+
+-   Customer analytics
+-   Predictions
+-   Recommendations
+-   Sentiment analysis
+-   Demand forecasting
+-   RAG chatbot
+-   RAG operations
+-   Monitoring information
+
+The dashboard communicates with the FastAPI backend rather than directly
+executing model logic.
+
+This keeps the application architecture separated into:
+
+    Streamlit
+        ↓
+    FastAPI
+        ↓
+    Service Layer
+        ↓
+    Models / Data / RAG
+
+------------------------------------------------------------------------
+
+# 📈 Monitoring
+
+The application exposes Prometheus metrics through:
+
+    /metrics
+
+The monitoring stack includes:
+
+-   Prometheus
+-   Grafana
+
+Metrics can be used to monitor:
+
+-   API requests
+-   API latency
+-   Application health
+-   Model-related operations
+-   RAG activity
+-   Infrastructure behavior
+
+Grafana dashboards provide a visual monitoring layer.
+
+------------------------------------------------------------------------
+
+# 🔍 Optional LangSmith Tracing
+
+LangSmith can be enabled for RAG observability.
+
+When enabled, it can provide visibility into the RAG pipeline:
+
+    Question
+       ↓
+    Retriever
+       ↓
+    Retrieved Documents
+       ↓
+    Prompt
+       ↓
+    LLM
+       ↓
+    Final Response
+
+LangSmith is optional and is not required for the core application to
+run.
+
+------------------------------------------------------------------------
+
+# 🐳 Docker Deployment
+
+Docker Compose orchestrates the main application services.
+
+The architecture separates:
+
+-   Backend
+-   Dashboard
+-   MLflow
+-   Monitoring services
+
+Start the application:
+
+    docker compose up --build -d
+
+Check running containers:
+
+    docker compose ps
+
+View backend logs:
+
+    docker compose logs --tail=100 backend
+
+------------------------------------------------------------------------
+
+# 🔗 Application URLs
+
+  -----------------------------------------------------------------------
+  ServiceURL        
+  ----------------- -----------------------------------------------------
+  Streamlit         <http://localhost:8501>
+  Dashboard         
+
+  FastAPI Swagger   <http://localhost:8000/docs>
+
+  FastAPI OpenAPI   http://localhost:8000/openapi.json
+
+  Health Check      http://localhost:8000/api/v1/health
+
+  MLflow            <http://localhost:5000>
+
+  Prometheus        <http://localhost:9090>
+
+  Grafana           <http://localhost:3000>
+  -----------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# 🧪 Testing the RAG API
+
+The RAG chatbot can be tested directly through the backend container.
+
+Example:
+
+    docker compose exec backend python -c "import urllib.request,json; data=json.dumps({'question':'What is the total revenue?','limit':5}).encode(); req=urllib.request.Request('http://127.0.0.1:8000/api/v1/chat',data=data,headers={'Content-Type':'application/json'}); print(urllib.request.urlopen(req,timeout=120).read().decode())"
+
+A successful response should contain:
+
+    answer
+    sources
+    prompt_version
+    knowledge_base_version
+    evaluation
+
+------------------------------------------------------------------------
+
+# 📁 Project Structure
+
+    AI-Commerce-Analytics-Platform/
+    │
+    ├── backend/
+    │   ├── app/
+    │   │   ├── core/
+    │   │   ├── services/
+    │   │   ├── routes/
+    │   │   └── main.py
+    │   └── requirements.txt
+    │
+    ├── streamlit/
+    │   └── pages/
+    │
+    ├── src/
+    │   ├── data/
+    │   ├── features/
+    │   └── services/
+    │
+    ├── pipelines/
+    │   ├── data/
+    │   ├── evaluation/
+    │   ├── features/
+    │   ├── services/
+    │   └── training/
+    │
+    ├── data/
+    │   └── processed/
+    │       └── master_df.parquet
+    │
+    ├── models/
+    │   ├── customer_churn_model.joblib
+    │   ├── customer_clv_model.joblib
+    │   ├── customer_review_sentiment_model.joblib
+    │   ├── demand_forecasting_model.joblib
+    │   ├── product_recommender_system.joblib
+    │   └── faiss_rag_index/
+    │
+    ├── rag_ops/
+    │   └── RAG evaluation and operational artifacts
+    │
+    ├── notebooks/
+    │   └── model development and analysis notebooks
+    │
+    ├── docs/
+    │   ├── 01_Project_Overview.md
+    │   ├── 02_System_Architecture.md
+    │   ├── 03_Data_Pipeline.md
+    │   ├── 04_Machine_Learning.md
+    │   ├── 05_RAG_Architecture.md
+    │   ├── 06_API_Documentation.md
+    │   ├── 07_Deployment_Guide.md
+    │   ├── 08_Project_Structure.md
+    │   └── 09_Monitoring.md
+    │
+    ├── docker-compose.yml
+    ├── prometheus.yml
+    └── README.md
+
+------------------------------------------------------------------------
+
+# 🛠️ Technology Stack
+
+## Programming & Data
+
+-   Python 3.13
+-   SQL
+-   Pandas
+-   NumPy
+-   PyArrow
+
+## Machine Learning
+
+-   Scikit-learn
+-   XGBoost
+-   LightGBM
+-   CatBoost
+-   SHAP
+
+## NLP & Generative AI
+
+-   TF-IDF
+-   DistilBERT
+-   LangChain
+-   FAISS
+-   Hugging Face embeddings
+-   Ollama
+-   Llama 3.2
+-   Retrieval-Augmented Generation
+
+## Backend & Application
+
+-   FastAPI
+-   Uvicorn
+-   Streamlit
+-   Plotly
+
+## MLOps & Observability
+
+-   MLflow
+-   Prometheus
+-   Grafana
+-   Optional LangSmith
+
+## Deployment
+
+-   Docker
+-   Docker Compose
+-   GitHub Actions
+
+------------------------------------------------------------------------
+
+# 🎯 Key Engineering Concepts Demonstrated
+
+## Data Science
+
+-   EDA
+-   Feature engineering
+-   RFM segmentation
+-   Statistical analysis
+-   Predictive modeling
+-   Model evaluation
+-   Explainable AI
+
+## Machine Learning
+
+-   Classification
+-   Regression
+-   Gradient boosting
+-   Imbalanced learning
+-   Threshold tuning
+-   Model comparison
+-   SHAP interpretation
+
+## NLP
+
+-   TF-IDF
+-   Sentiment classification
+-   Transformer models
+-   Semantic retrieval
+
+## Generative AI
+
+-   RAG architecture
+-   Vector search
+-   FAISS
+-   Embeddings
+-   Prompt construction
+-   Local LLM inference
+-   Grounded generation
+-   RAG evaluation
+
+## AI Engineering
+
+-   FastAPI model serving
+-   Service-layer architecture
+-   Lazy model loading
+-   Persisted model artifacts
+-   API contracts
+-   Dockerized services
+-   Observability
+-   Experiment tracking
+
+------------------------------------------------------------------------
+
+# 📌 Design Principles
+
+The project follows several practical engineering principles.
+
+### Separation of Concerns
+
+Data preparation, model training, serving, UI, RAG, and monitoring are
+separated into different components.
+
+### Reusable Artifacts
+
+Models and the RAG knowledge base are persisted so they can be loaded
+during serving rather than rebuilt for every request.
+
+### API-First Architecture
+
+Streamlit communicates with the backend through FastAPI APIs.
+
+### Observable AI
+
+The RAG system records retrieval sources and evaluation information
+rather than treating the LLM as a black box.
+
+### Production-Style Deployment
+
+Docker Compose provides reproducible local deployment of the application
+stack.
