@@ -1,4 +1,4 @@
-    # AI Commerce Analytics Platform
+# AI Commerce Analytics Platform
 
     [![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
     [![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -559,6 +559,7 @@ View backend logs:
   Prometheus        <http://localhost:9090>
 
   Grafana           <http://localhost:3000>
+  
   -----------------------------------------------------------------------
 
 ------------------------------------------------------------------------
