@@ -85,6 +85,37 @@ class ChatRequest(BaseModel):
     )
 
 
+class AgentRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=2_000)
+    customer_id: str | None = Field(default=None, max_length=128)
+    review_text: str | None = Field(default=None, max_length=5_000)
+
+
+class AgentResponse(BaseModel):
+    request_id: str
+    answer: str
+    intent: str
+    tools_used: list[str]
+    evidence: list[dict[str, Any]]
+    sources: list[str]
+    errors: list[str]
+    latency_ms: float
+    iterations: int
+    evaluation: dict[str, Any]
+    fallback_used: bool
+    trace: list[dict[str, Any]]
+    anomalies: list[dict[str, Any]]
+    grounded: str
+    confidence: str
+    decision_summary: str
+    llm_calls: int
+    llm_latency_ms: float
+    estimated_cost_usd: float | None
+    token_usage: dict[str, int] | None
+    planner_mode: str
+    selector_mode: str
+
+
 class ChatResponse(BaseModel):
     answer: str
     sources: list[str]

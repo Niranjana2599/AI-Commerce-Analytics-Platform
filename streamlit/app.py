@@ -21,6 +21,7 @@ MODULES = [
     ("Understand", "Sentiment Analysis", "Classify and explore review language", "pages/07_Sentiment_Analysis.py", "💬"),
     ("Plan", "Demand Forecasting", "Estimate near-term order demand", "pages/08_Demand_Forecasting.py", "📈"),
     ("Ask", "RAG Chatbot", "Ask grounded commerce questions", "pages/09_RAG_Chatbot.py", "🤖"),
+    ("Ask", "Agentic Analyst", "Orchestrate business tools for multi-step questions", "pages/13_Agentic_Analyst.py", "🧠"),
     ("Operate", "RAG Operations", "Monitor RAG quality and latency", "pages/11_RAG_Operations.py", "🧭"),
     ("Operate", "System Monitoring", "Inspect live service and platform telemetry", "pages/12_Monitoring.py", "🖥️"),
 ]

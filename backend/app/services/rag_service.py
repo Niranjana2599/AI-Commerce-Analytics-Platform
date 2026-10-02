@@ -389,6 +389,13 @@ def run_rag_pipeline(
 # Public API
 # ============================================================
 
+def retrieve_evidence(question: str, limit: int = 5) -> tuple[str, list[str]]:
+    """Return validated FAISS context/sources without invoking answer generation."""
+    if not question.strip() or not 1 <= limit <= 10:
+        raise ValueError("Retrieval needs a non-empty question and limit from 1 through 10")
+    context, sources, _scores = _retrieve(question, limit)
+    return context, sources
+
 def answer_question(
     question: str,
     limit: int = 5,

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
 from backend.app.api.routes import router
+from backend.app.api.agent import router as agent_router
 from backend.app.core.config import settings
 from backend.app.monitoring.metrics import ACTIVE_REQUESTS, HTTP_ERRORS, HTTP_REQUEST_DURATION, HTTP_REQUESTS
 
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
             ACTIVE_REQUESTS.dec()
 
     app.include_router(router, prefix=settings.api_prefix)
+    app.include_router(agent_router, prefix=settings.api_prefix)
     # Prometheus scrapes this endpoint; it also includes Python process metrics on Linux.
     app.mount("/metrics", make_asgi_app())
     return app

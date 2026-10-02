@@ -8,7 +8,7 @@ import os
 # Project root
 # ------------------------------------------------------------
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 # ------------------------------------------------------------
@@ -84,6 +84,9 @@ class Settings:
         "OLLAMA_MODEL",
         "llama3.2"
     )
+
+    agent_planner_enabled: bool = os.getenv("AGENT_PLANNER_ENABLED", "true").lower() == "true"
+    agent_planner_timeout_seconds: float = float(os.getenv("AGENT_PLANNER_TIMEOUT_SECONDS", "12"))
 
     # Enable LLM-based RAG answer generation
     rag_llm_enabled: bool = (

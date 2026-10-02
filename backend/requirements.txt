@@ -13,6 +13,7 @@ langchain-community
 langchain-text-splitters
 langchain-huggingface
 langchain-ollama
+langgraph>=0.2,<2
 
 # Embeddings / FAISS
 sentence-transformers

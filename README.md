@@ -29,6 +29,7 @@ It covers:
 - Product recommendations
 - Review sentiment analysis
 - Retrieval-Augmented Generation (RAG)
+- LangGraph agent orchestration over existing commerce services
 - Experiment tracking
 - API-based model serving
 - Interactive analytics dashboards
@@ -429,6 +430,7 @@ Current API endpoints include:
 ```
 /api/v1/analytics/customer-metrics
 /api/v1/chat
+/api/v1/agent/ask
 /api/v1/forecast/demand
 /api/v1/health
 /api/v1/predictions/churn
@@ -438,6 +440,12 @@ Current API endpoints include:
 /api/v1/recommendations/{customer_id}
 /api/v1/sentiment
 ```
+
+### Agentic Commerce Analyst
+
+The **Agentic Analyst** Streamlit page calls `POST /api/v1/agent/ask`. FastAPI runs a single bounded LangGraph supervisor whose allowlisted tools wrap the existing analytics, saved-model, recommendation, forecasting, sentiment, anomaly, and RAG services. It selects one tool, validates and observes the result, then decides on the next action from request goals and prior results. Ollama planning/selection can be disabled with `AGENT_PLANNER_ENABLED=false`; deterministic routing remains available. Customer cohort predictions use only fields present in the engineered customer rows and the saved model's `feature_names_in_` contract. Churn and CLV failures can execute real, clearly labeled recency-risk and historical-spend fallbacks.
+
+The implementation lives under `backend/app/agents`, `backend/app/tools`, `backend/app/guardrails`, and `backend/app/evaluation`; the UI is `streamlit/pages/13_Agentic_Analyst.py`; the walkthrough is `notebooks/11_Agentic_AI_Orchestration.ipynb`. Memory is request-scoped; this is not a multi-agent system, and toxicity/misuse classification is not implemented. Existing API and RAG workflows remain available. Agent telemetry is exposed through the existing Prometheus `/metrics` endpoint.
 
 Interactive API documentation is available through Swagger UI.
 

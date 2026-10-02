@@ -20,8 +20,22 @@ The current local API has **no authentication layer**. Do not expose it publicly
 | POST | `/sentiment` | Review sentiment |
 | POST | `/forecast/demand` | Demand forecast points |
 | POST | `/chat` | RAG chatbot |
+| POST | `/agent/ask` | Bounded LangGraph orchestration across allowlisted commerce tools |
 | GET | `/rag/metrics` | Privacy-safe RAG aggregate metrics |
 | GET | `/metrics` | Prometheus exposition endpoint (outside `/api/v1`) |
+
+### Agentic analyst
+
+```http
+POST /api/v1/agent/ask
+Content-Type: application/json
+
+{"question":"Did anything unusual happen to revenue or orders?"}
+```
+
+The response includes request ID, selected intent, tools used, safe evidence records, sources, errors, retries/fallback metadata in the trace, iteration count, latency, evaluation, anomalies, grounding status, and planner/selector modes. Evidence includes compact feature/prediction summaries and redacted input summaries; raw tool arguments are not returned. An optional `customer_id` scopes supported customer tools, and `review_text` enables sentiment analysis. The API is currently unauthenticated; do not expose customer-scoped calls publicly without authentication and authorization.
+
+Execution uses a single supervisor that selects one allowlisted tool, validates and observes its result, then chooses the next action. It is not a multi-agent system. State and memory are request-scoped. Contact PII and a few common prompt-injection patterns are checked, but no toxicity/misuse classifier is installed. Ollama token usage and cost are unavailable and returned as `null`. Churn and CLV fallback results are explicitly marked heuristic/historical proxies.
 
 ## Examples
 

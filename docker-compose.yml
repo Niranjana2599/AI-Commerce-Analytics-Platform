@@ -212,6 +212,8 @@ services:
 
       # Installed Ollama model.
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:latest}
+      AGENT_PLANNER_ENABLED: ${AGENT_PLANNER_ENABLED:-true}
+      AGENT_PLANNER_TIMEOUT_SECONDS: ${AGENT_PLANNER_TIMEOUT_SECONDS:-12}
 
       # --------------------------------------------------------
       # LangSmith
