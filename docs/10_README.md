@@ -10,7 +10,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Observability](https://img.shields.io/badge/Observability-Prometheus%20%7C%20Grafana-E6522C)
 
-An end-to-end AI commerce analytics workspace that combines customer intelligence, machine-learning predictions, product recommendations, review sentiment, demand forecasting, and a retrieval-assisted commerce chatbot.
+An end-to-end AI commerce analytics workspace that combines customer intelligence, machine-learning predictions, product recommendations, review sentiment, demand forecasting, a direct RAG chatbot, and a single-supervisor Agentic Commerce Analyst.
 
 ## Why this project
 
@@ -22,10 +22,23 @@ The platform demonstrates how to move from prepared e-commerce data to a user-fa
 flowchart LR
   User --> Streamlit[Streamlit dashboard]
   Streamlit --> API[FastAPI]
+  API --> Guard[Agent input guardrails]
+  Guard --> Supervisor[Single LangGraph supervisor]
+  Supervisor --> Planner[Request objectives]
+  Planner --> Selector[Router / selector]
+  Selector --> Registry[Allowlisted tool registry]
+  Registry --> Tools[Existing commerce tools and services]
+  Tools --> Observe[Validate and observe]
+  Observe -->|More evidence| Selector
+  Observe -->|Complete| Answer[Response synthesis]
+  Answer --> Streamlit
   API --> Data[(Prepared data)]
   API --> Models[(Model artifacts)]
   API --> MLflow[MLflow]
-  API --> RAG[RAG + optional Ollama]
+  API --> Chat[Direct RAG chatbot]
+  Registry --> RAGTool[RAG search tool when relevant]
+  Chat --> RAG[RAG service + optional Ollama]
+  RAGTool --> RAG
   API --> Prometheus
   Prometheus --> Grafana
   RAG -. optional .-> LangSmith
@@ -36,6 +49,7 @@ flowchart LR
 - Customer analytics KPIs and customer-focused dashboard views.
 - Churn and CLV predictions through FastAPI.
 - Delivery risk assessment, product recommendations, sentiment analysis, and demand forecasting.
+- Agentic Analyst: one supervisor selects from existing registered tools and uses observed results to decide whether more evidence is needed.
 - RAG chatbot with source labels, prompt/knowledge-base versioning, and optional local Ollama generation.
 - MLflow experiment tracking and artifact logging.
 - LangSmith tracing and offline RAG evaluation.
@@ -87,7 +101,7 @@ LANGCHAIN_API_KEY=<your-key>
 LANGCHAIN_PROJECT=AI-Commerce-Analytics-Platform
 ```
 
-The active retriever is TF-IDF. FAISS/LangChain are future integration directions, not runtime requirements for the current chatbot.
+The active chatbot and agent RAG tool use the persisted FAISS index under `models/faiss_ecommerce/`; Ollama generation is optional. The Agentic Analyst calls this existing retrieval service through its registered `rag_search` tool when relevant.
 
 ## Observability
 
@@ -107,9 +121,10 @@ FastAPI exports Prometheus metrics at `/metrics`. Grafana auto-loads API, ML, RA
 
 1. Open Streamlit and inspect customer KPIs.
 2. Submit a churn or CLV prediction.
-3. Ask the RAG chatbot a commerce question.
-4. Inspect the resulting Prometheus metrics and Grafana panels.
-5. Enable LangSmith tracing and inspect the RAG stage tree.
+3. Ask the RAG chatbot a document-oriented question.
+4. Ask the Agentic Analyst a multi-part business question and review its concise execution trace.
+5. Inspect Prometheus metrics and Grafana panels.
+6. Enable LangSmith tracing and inspect the RAG stage tree.
 
 ## Documentation
 
@@ -121,6 +136,7 @@ FastAPI exports Prometheus metrics at `/metrics`. Grafana auto-loads API, ML, RA
 - [API Documentation](06_API_Documentation.md)
 - [Deployment Guide](07_Deployment_Guide.md)
 - [Project Structure](08_Project_Structure.md)
+- [Agentic AI Orchestration](11_Agentic_AI_Orchestration.md)
 - [Monitoring](09_Monitoring.md)
 
 ## Future improvements
@@ -128,7 +144,7 @@ FastAPI exports Prometheus metrics at `/metrics`. Grafana auto-loads API, ML, RA
 - Replace baseline recommenders/forecasts with validated advanced approaches.
 - Add authentication, authorization, and rate limiting to FastAPI.
 - Add automated data validation and drift monitoring.
-- Migrate the retriever to FAISS or another vector store when semantic retrieval is required.
+- Evaluate alternate retrieval backends only if future data scale or retrieval evaluation justifies a change.
 - Add alert contact points, SLOs, and managed production observability.
 
 ## License

@@ -21,7 +21,8 @@ E-commerce teams often work across disconnected reports, operational datasets, a
 | Recommendations | Popular-unseen product recommendations for a customer. |
 | Sentiment | Review sentiment classification with a safe keyword fallback if an artifact is unavailable. |
 | Forecasting | Daily demand forecasting endpoint. |
-| RAG chatbot | Retrieval over persisted commerce documents, versioned prompts, optional local Ollama generation, and source labels. |
+| Agentic Analyst | One LangGraph supervisor orchestrates allowlisted tools around existing commerce services; optional local LLM planning, result validation, and execution evidence. |
+| RAG chatbot | Direct retrieval over persisted FAISS commerce documents, versioned prompts, optional local Ollama generation, and source labels. |
 | MLOps/LLMOps | MLflow experiments, LangSmith RAG tracing, offline RAG evaluation, and local aggregate RAG reports. |
 | Monitoring | Prometheus metrics and provisioned Grafana dashboards/alerts for API, ML, RAG, and infrastructure signals. |
 
@@ -33,16 +34,17 @@ E-commerce teams often work across disconnected reports, operational datasets, a
 | ML | scikit-learn, XGBoost, LightGBM, joblib |
 | APIs & UI | FastAPI, Uvicorn, Streamlit, Plotly |
 | Experiment tracking | MLflow with SQLite metadata and local artifacts |
-| RAG | Persisted TF-IDF retriever, optional Ollama, LangSmith tracing |
+| RAG | Persisted FAISS index, optional Ollama, LangSmith tracing; also callable by the Agentic Analyst tool registry |
 | Delivery | Docker, Docker Compose, Render Blueprint |
 | Observability | Prometheus, Node Exporter, cAdvisor, Grafana |
 | Quality | pytest, Black, Flake8, GitHub Actions |
 
-> **Accuracy note:** the active retriever is TF-IDF and is saved as a joblib artifact. FAISS and LangChain are listed as future/optional integration directions; they are not required by the running RAG path today.
+> **Accuracy note:** the active RAG service loads the persisted FAISS index under `models/faiss_ecommerce/`; Ollama generation is optional. The Agentic Analyst reuses this service through its registered RAG search tool.
 
 ## Key highlights
 
 - A single API and dashboard surface across multiple e-commerce use cases.
+- A single LangGraph supervisor routes natural-language business questions to allowlisted tools around existing services; this is not a multi-agent system.
 - Artifact-aware startup: data and models are mounted locally and can be bootstrapped to a Render persistent disk.
 - Production-minded operational visibility: health checks, metrics, dashboards, alerts, tracing, and CI checks.
 - Clear separation between pipelines, API services, models, user interface, and observability tooling.
@@ -59,6 +61,7 @@ E-commerce teams often work across disconnected reports, operational datasets, a
 ## Related documents
 
 - [System Architecture](02_System_Architecture.md)
+- [Agentic AI Orchestration](11_Agentic_AI_Orchestration.md)
 - [Machine Learning](04_Machine_Learning.md)
 - [RAG Architecture](05_RAG_Architecture.md)
 - [Deployment Guide](07_Deployment_Guide.md)

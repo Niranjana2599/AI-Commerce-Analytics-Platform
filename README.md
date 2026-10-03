@@ -7,9 +7,9 @@
 [![MLflow](https://img.shields.io/badge/MLflow-Experiment%20Tracking-0194E2)](https://mlflow.org/)
 [![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-0467DF)](https://faiss.ai/)
 
-An end-to-end **AI-powered e-commerce analytics platform** combining customer analytics, predictive machine learning, NLP, recommendations, demand forecasting, and a grounded RAG-based AI analyst.
+An end-to-end **AI-powered e-commerce analytics platform** combining customer analytics, predictive machine learning, NLP, recommendations, demand forecasting, a direct RAG knowledge workspace, and a single-supervisor Agentic Commerce Analyst.
 
-The project is designed as a **production-style analytics and AI application**, with FastAPI for model serving, Streamlit for the user interface, MLflow for experiment tracking, FAISS for vector retrieval, Ollama/Llama 3.2 for local LLM generation, and Prometheus/Grafana for monitoring.
+The project is designed as a **production-style analytics and AI application**, with FastAPI for model serving and orchestration, Streamlit for the user interface, MLflow for experiment tracking, FAISS retrieval for the current RAG workflow, optional Ollama generation, and Prometheus/Grafana for monitoring.
 
 ---
 
@@ -46,31 +46,28 @@ The project demonstrates the complete journey from:
 
 ```mermaid
 flowchart LR
-
-User[User]
-
-User --> Streamlit[Streamlit Dashboard]
-
-Streamlit --> FastAPI[FastAPI Backend]
-
-FastAPI --> Data[(Processed E-commerce Data)]
-
-FastAPI --> Models[(ML Joblib Artifacts)]
-
-FastAPI --> MLflow[MLflow]
-
-FastAPI --> RAG[RAG AI Analyst]
-
-RAG --> FAISS[(FAISS Vector Index)]
-
-RAG --> Ollama[Ollama / Llama 3.2]
-
-FastAPI --> Prometheus[Prometheus]
-
-Prometheus --> Grafana[Grafana]
-
-RAG -. Optional .-> LangSmith[LangSmith Tracing]
+  User[Business user] --> UI[Streamlit]
+  UI --> API[FastAPI]
+  API -->|POST /api/v1/agent/ask| Guard[Input guardrails]
+  Guard --> Supervisor[Single LangGraph supervisor]
+  Supervisor --> Planner[Planner / objective stage]
+  Planner --> Selector[Router and selector]
+  Selector --> Registry[Allowlisted tool registry]
+  Registry --> Tools[Existing commerce tools and services]
+  Tools --> Observe[Validate and observe result]
+  Observe -->|More evidence| Selector
+  Observe -->|Complete| Synthesize[Response synthesis]
+  Synthesize --> UI
+  API --> Direct[Direct analytics and model endpoints]
+  API -->|POST /api/v1/chat| Chat[RAG Chatbot]
+  Registry --> RAGTool[RAG search tool, when relevant]
+  Chat --> Retriever[FAISS index at models/faiss_ecommerce]
+  RAGTool --> Retriever
+  API --> Prometheus[Prometheus]
+  Prometheus --> Grafana[Grafana]
 ```
+
+The Agentic Analyst uses one supervisor to select registered tools and decide from observed results whether more evidence is needed. It orchestrates existing services; it does not replace their ML or analytics logic. The RAG Chatbot remains a separate direct knowledge workspace.
 
 ---
 
@@ -239,88 +236,19 @@ The system therefore demonstrates both a lightweight NLP baseline and a transfor
 
 ---
 
-# 🧠 RAG AI Analyst
+# 🧠 RAG Chatbot — direct knowledge workspace
 
-One of the main AI components of the project is the **RAG-based AI Analyst**.
+The RAG Chatbot answers document-oriented questions using the project's indexed commerce evidence. It is a direct knowledge workspace at `POST /api/v1/chat`. The Agentic Analyst is a separate natural-language business entry point; its supervisor may use the registered RAG search tool alongside structured tools when document evidence is relevant.
 
-The chatbot allows users to ask questions about the e-commerce business and receive answers grounded in the project's commerce knowledge base.
+## Current retrieval flow
 
-Example:
+The current RAG service loads the persisted FAISS index from `models/faiss_ecommerce/`. The Agentic Analyst `rag_search` tool calls this same retrieval service when document evidence is relevant.
 
-
-```
-User:
-What is the total revenue?
-
-    ↓
-
-Question Processing
-
-    ↓
-
-FAISS Vector Retrieval
-
-    ↓
-
-Relevant Commerce Documents
-
-    ↓
-
-Prompt Construction
-
-    ↓
-
-Ollama / Llama 3.2
-
-    ↓
-
-Grounded Answer + Sources
+```text
+User question → FAISS retrieval → relevant indexed text → optional Ollama generation → answer + sources
 ```
 
----
-
-## 🔎 FAISS Vector Retrieval
-
-The current RAG implementation uses a **persisted FAISS vector index**.
-
-The vector knowledge base is stored under:
-
-
-```
-models/
-└── faiss_rag_index/
-```
-
-The FAISS index contains vector representations of the project's commerce knowledge.
-
-At runtime, the backend loads the persisted vector index and retrieves the most relevant documents for the user's question.
-
-This avoids rebuilding the vector index for every API request.
-
----
-
-## 🧬 RAG Retrieval Flow
-
-
-```
-User Question
-  ↓
-Question Embedding
-  ↓
-FAISS Similarity Search
-  ↓
-Top-K Relevant Documents
-  ↓
-Context Construction
-  ↓
-Versioned Prompt
-  ↓
-Ollama / Llama 3.2
-  ↓
-Grounded Response
-  ↓
-Sources + Evaluation Metadata
-```
+Retrieved documents are evidence, not instructions. The agent and direct chatbot must not claim project facts that are absent from structured data and indexed documents.
 
 ---
 
@@ -337,7 +265,7 @@ The configured backend endpoint is:
 http://host.docker.internal:11434
 ```
 
-The LLM is used for response generation after relevant commerce information has been retrieved from FAISS.
+When enabled, the LLM generates a response using retrieved commerce evidence; the current retriever uses FAISS.
 
 This provides a local/private generation workflow without requiring a hosted LLM API for the core RAG demo.
 
@@ -445,7 +373,7 @@ Current API endpoints include:
 
 The **Agentic Analyst** Streamlit page calls `POST /api/v1/agent/ask`. FastAPI runs a single bounded LangGraph supervisor whose allowlisted tools wrap the existing analytics, saved-model, recommendation, forecasting, sentiment, anomaly, and RAG services. It selects one tool, validates and observes the result, then decides on the next action from request goals and prior results. Ollama planning/selection can be disabled with `AGENT_PLANNER_ENABLED=false`; deterministic routing remains available. Customer cohort predictions use only fields present in the engineered customer rows and the saved model's `feature_names_in_` contract. Churn and CLV failures can execute real, clearly labeled recency-risk and historical-spend fallbacks.
 
-The implementation lives under `backend/app/agents`, `backend/app/tools`, `backend/app/guardrails`, and `backend/app/evaluation`; the UI is `streamlit/pages/13_Agentic_Analyst.py`; the walkthrough is `notebooks/11_Agentic_AI_Orchestration.ipynb`. Memory is request-scoped; this is not a multi-agent system, and toxicity/misuse classification is not implemented. Existing API and RAG workflows remain available. Agent telemetry is exposed through the existing Prometheus `/metrics` endpoint.
+The implementation lives under `backend/app/agents`, `backend/app/tools`, `backend/app/guardrails`, and `backend/app/evaluation`; the API route is `backend/app/api/agent.py`; the UI is `streamlit/pages/13_Agentic_Analyst.py`; and the walkthrough is `notebooks/11_Agentic_AI_Orchestration.ipynb`. Memory is request-scoped; this is not a multi-agent system, and toxicity/misuse classification is not implemented. Existing direct API and RAG workflows remain available. Agent telemetry is exposed through the existing Prometheus `/metrics` endpoint. See [Agentic AI Orchestration](docs/11_Agentic_AI_Orchestration.md) for the implementation map and limitations.
 
 Interactive API documentation is available through Swagger UI.
 
@@ -460,7 +388,8 @@ The Streamlit application provides an interactive interface for:
 -  Recommendations 
 -  Sentiment analysis 
 -  Demand forecasting 
--  RAG chatbot 
+-  Agentic Analyst for natural-language business questions
+-  RAG Chatbot as a direct indexed-knowledge workspace
 -  RAG operations 
 -  Monitoring information 
 
@@ -613,9 +542,13 @@ AI-Commerce-Analytics-Platform/
 │
 ├── backend/
 │   ├── app/
-│   │   ├── core/
-│   │   ├── services/
-│   │   ├── routes/
+│   │   ├── agents/       # One LangGraph supervisor and request-scoped state
+│   │   ├── api/          # REST routes, including POST /agent/ask
+│   │   ├── tools/        # Allowlisted adapters around existing services
+│   │   ├── guardrails/   # Lightweight input/output checks
+│   │   ├── evaluation/   # Runtime execution evaluation
+│   │   ├── services/    # Existing analytics, ML, and RAG services
+│   │   ├── schemas/
 │   │   └── main.py
 │   └── requirements.txt
 │
@@ -644,13 +577,13 @@ AI-Commerce-Analytics-Platform/
 │   ├── customer_review_sentiment_model.joblib
 │   ├── demand_forecasting_model.joblib
 │   ├── product_recommender_system.joblib
-│   └── faiss_rag_index/
+│   └── faiss_ecommerce/  # Persisted RAG index
 │
 ├── rag_ops/
 │   └── RAG evaluation and operational artifacts
 │
 ├── notebooks/
-│   └── model development and analysis notebooks
+│   └── 01–11 analysis and modeling notebooks (including Agentic AI walkthrough)
 │
 ├── docs/
 │   ├── 01_Project_Overview.md
@@ -661,7 +594,9 @@ AI-Commerce-Analytics-Platform/
 │   ├── 06_API_Documentation.md
 │   ├── 07_Deployment_Guide.md
 │   ├── 08_Project_Structure.md
-│   └── 09_Monitoring.md
+│   ├── 09_Monitoring.md
+│   ├── 10_README.md
+│   └── 11_Agentic_AI_Orchestration.md
 │
 ├── docker-compose.yml
 ├── prometheus.yml
@@ -693,8 +628,9 @@ AI-Commerce-Analytics-Platform/
 -  TF-IDF 
 -  DistilBERT 
 -  LangChain 
--  FAISS 
--  Hugging Face embeddings 
+-  LangGraph orchestration
+-  FAISS retrieval
+-  Hugging Face embeddings
 -  Ollama 
 -  Llama 3.2 
 -  Retrieval-Augmented Generation 
@@ -753,9 +689,9 @@ AI-Commerce-Analytics-Platform/
 ## Generative AI
 
 -  RAG architecture 
--  Vector search 
--  FAISS 
--  Embeddings 
+-  FAISS retrieval
+-  Evidence validation
+-  Result-aware tool orchestration
 -  Prompt construction 
 -  Local LLM inference 
 -  Grounded generation 

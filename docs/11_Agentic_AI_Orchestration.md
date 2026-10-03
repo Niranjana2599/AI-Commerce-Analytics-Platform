@@ -2,6 +2,8 @@
 
 The Agentic Commerce Analyst is one bounded LangGraph supervisor over existing FastAPI commerce services. It selects one tool, validates and observes its actual result, then decides whether another tool is needed. Models, analytics, recommendation, forecasting, sentiment, anomaly detection, and RAG remain services/tools. The optional LLM proposes request goals and can choose only among host-approved next actions; deterministic selection remains the fallback.
 
+The Streamlit **Agentic Analyst** is the natural-language business entry point. The **RAG Chatbot** remains a separate direct knowledge workspace at `POST /api/v1/chat`; the supervisor can call the registered RAG search tool when indexed-document evidence is relevant. Customer, analytics, and knowledge are capability groupings, not independent autonomous agents.
+
 ```text
 Streamlit → POST /api/v1/agent/ask → input guardrail → LangGraph state
                                                    ↓

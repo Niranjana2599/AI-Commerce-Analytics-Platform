@@ -48,11 +48,14 @@ Prometheus scrapes FastAPI, itself, Node Exporter, and cAdvisor every 15 seconds
 | HTTP | `http_requests_total`, `http_request_duration_seconds`, `http_errors_total`, `active_requests` |
 | ML | `prediction_requests_total`, `prediction_errors_total`, `prediction_latency_seconds`, `model_loading_seconds`, `loaded_models` |
 | RAG | `chatbot_requests_total`, `chatbot_errors_total`, `rag_latency_seconds`, `rag_retriever_latency_seconds`, `rag_llm_latency_seconds`, `rag_retrieved_documents` |
+| Agent | `agent_requests_total`, `agent_tool_calls_total`, `agent_tool_failures_total`, `agent_tool_latency_seconds`, `agent_tool_retries_total`, `agent_tool_fallbacks_total`, `agent_request_latency_seconds`, `agent_llm_call_latency_seconds`, `agent_iterations`, `agent_anomalies_total` |
 | Infrastructure | Node Exporter and cAdvisor host/container metrics |
 
 ## Grafana
 
 Open: http://localhost:3000
+
+Agent runtime metrics are exported through FastAPI `/metrics`. A dedicated Agentic Analyst Grafana dashboard is not currently provisioned.
 
 Grafana provisions a Prometheus datasource and four dashboards:
 
@@ -62,6 +65,8 @@ Grafana provisions a Prometheus datasource and four dashboards:
 4. Infrastructure Monitoring
 
 Seven Grafana-managed alert rules are included. They appear in the UI but require a contact point and notification policy before they notify a team.
+
+The Agentic Analyst execution flow and returned evidence are documented in [Agentic AI Orchestration](11_Agentic_AI_Orchestration.md).
 
 ## Incident workflow
 

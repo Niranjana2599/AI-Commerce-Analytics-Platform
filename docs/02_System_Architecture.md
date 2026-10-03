@@ -10,7 +10,7 @@ flowchart LR
   API --> Models[(Joblib model artifacts)]
   API --> MLflow[MLflow :5000]
   API --> RAG[RAG service]
-  RAG --> Retriever[Persisted TF-IDF retriever]
+  RAG --> Retriever[Persisted FAISS index]
   RAG -. optional .-> Ollama[Local Ollama]
   RAG -. traces .-> LangSmith[LangSmith]
 ```
@@ -30,6 +30,28 @@ sequenceDiagram
   A-->>S: JSON response or structured error
   S-->>U: Cards, charts, tables, or chat message
 ```
+
+## Agentic Analyst flow
+
+The natural-language business entry point is `POST /api/v1/agent/ask`. FastAPI screens the request, then invokes one LangGraph supervisor. The planner/objective stage interprets the request; router and selector logic chooses an eligible registered tool. Existing domain services perform the computation. The supervisor observes and validates each result, then continues to another eligible tool or synthesizes a response. The LLM is optional; deterministic routing remains available.
+
+```mermaid
+flowchart TD
+  U[Business question] --> UI[Streamlit Agentic Analyst]
+  UI --> API[POST /api/v1/agent/ask]
+  API --> Guard[Input guardrails]
+  Guard --> Supervisor[Single LangGraph supervisor]
+  Supervisor --> Planner[Planner: intent and objectives]
+  Planner --> Router[Router and selector: eligible next action]
+  Router --> Registry[Allowlisted tool registry]
+  Registry --> Existing[Existing analytics, ML, recommendation, forecast, sentiment, anomaly, or RAG service]
+  Existing --> Validate[Validate and observe result]
+  Validate -->|More evidence needed| Router
+  Validate -->|Objective complete| Synthesize[Safe response synthesis]
+  Synthesize --> UI
+```
+
+This is a single-supervisor system, not a team of autonomous specialist agents. Customer, analytics, and knowledge are explanatory capability groupings. The direct RAG Chatbot (`POST /api/v1/chat`) remains separate; the Agentic Analyst can use RAG search when indexed-document evidence is relevant. See [Agentic AI Orchestration](11_Agentic_AI_Orchestration.md) for tool, state, fallback, and safety details.
 
 ## Data flow
 
@@ -62,7 +84,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  Q[Question] --> Retrieve[TF-IDF retriever]
+  Q[Question] --> Retrieve[FAISS retriever]
   Retrieve --> Context[Scored commerce context]
   Context --> Prompt[Versioned prompt template]
   Prompt --> Generate{Ollama enabled?}

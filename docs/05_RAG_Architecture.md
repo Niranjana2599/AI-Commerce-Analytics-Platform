@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The RAG chatbot answers e-commerce questions using a persisted **FAISS vector index** built from product, review, and dashboard knowledge. It retrieves relevant evidence, passes that evidence to a versioned prompt, and optionally uses a local **Ollama (Llama 3.2)** LLM to generate a grounded answer.
+The direct RAG Chatbot answers e-commerce questions using a persisted **FAISS vector index** built from product, review, and dashboard knowledge. The Agentic Analyst can reuse the same retrieval service through its registered `rag_search` tool when a broader business question needs document evidence. Retrieval remains in the existing RAG service; the tool registry validates its result contract, and the supervisor orchestrates it with other registered capabilities.
 
 The API returns the answer together with source labels, prompt version, knowledge-base version, and evaluation signals.
 
@@ -114,7 +114,7 @@ FAISS Vector Index
         |
         | persisted
         v
-models/faiss_rag_index
+models/faiss_ecommerce
 ```
 
 At query time:

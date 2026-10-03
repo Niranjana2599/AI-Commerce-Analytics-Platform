@@ -37,6 +37,8 @@ The response includes request ID, selected intent, tools used, safe evidence rec
 
 Execution uses a single supervisor that selects one allowlisted tool, validates and observes its result, then chooses the next action. It is not a multi-agent system. State and memory are request-scoped. Contact PII and a few common prompt-injection patterns are checked, but no toxicity/misuse classifier is installed. Ollama token usage and cost are unavailable and returned as `null`. Churn and CLV fallback results are explicitly marked heuristic/historical proxies.
 
+The direct RAG Chatbot remains at `POST /api/v1/chat`; the agent may use registered RAG search as one capability in a broader request. See [Agentic AI Orchestration](11_Agentic_AI_Orchestration.md) for runtime flow, tool registry, and safety boundaries.
+
 ## Examples
 
 ### Health
