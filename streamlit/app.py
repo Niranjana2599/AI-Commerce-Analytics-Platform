@@ -5,6 +5,7 @@ import plotly.express as px
 import streamlit as st
 
 from utils.api_client import api_request
+from utils.agent_entry import render_agent_entry
 from utils.ui import page_hero, section_heading, setup_page
 
 
@@ -20,8 +21,8 @@ MODULES = [
     ("Personalize", "Product Recommendation", "Generate relevant product suggestions", "pages/06_Product_Recommendation.py", "🎯"),
     ("Understand", "Sentiment Analysis", "Classify and explore review language", "pages/07_Sentiment_Analysis.py", "💬"),
     ("Plan", "Demand Forecasting", "Estimate near-term order demand", "pages/08_Demand_Forecasting.py", "📈"),
-    ("Ask", "RAG Chatbot", "Ask grounded commerce questions", "pages/09_RAG_Chatbot.py", "🤖"),
-    ("Ask", "Agentic Analyst", "Orchestrate business tools for multi-step questions", "pages/13_Agentic_Analyst.py", "🧠"),
+    ("Ask", "Agentic Analyst", "Ask in plain language; the supervisor selects tools", "pages/13_Agentic_Analyst.py", "🧠"),
+    ("Ask", "RAG Chatbot", "Search indexed business documents directly", "pages/09_RAG_Chatbot.py", "📚"),
     ("Operate", "RAG Operations", "Monitor RAG quality and latency", "pages/11_RAG_Operations.py", "🧭"),
     ("Operate", "System Monitoring", "Inspect live service and platform telemetry", "pages/12_Monitoring.py", "🖥️"),
 ]
@@ -34,9 +35,9 @@ def load_readiness():
 
 
 page_hero(
-    "Commerce intelligence workspace",
-    "AI Commerce Analytics Platform",
-    "Move from business exploration to predictive models, demand planning, grounded AI answers, and production observability in one responsive application.",
+    "AI Commerce Intelligence",
+    "Ask a business question. Let the platform determine the analysis required.",
+    "Start with the Agentic Analyst. Open a direct workspace only when you already know which capability you need.",
 )
 
 with st.spinner("Checking platform readiness..."):
@@ -49,8 +50,9 @@ status_columns[1].metric("Modules", len(MODULES))
 status_columns[2].metric("Frontend", "Streamlit")
 status_columns[3].metric("Visualizations", "Plotly")
 with status_columns[4]:
-    st.markdown("#### Ready to explore?")
-    st.page_link("pages/01_Home.py", label="Open executive dashboard", icon="📊", width="stretch")
+    st.markdown("#### Start with a question")
+    st.page_link("pages/13_Agentic_Analyst.py", label="Open Agentic Analyst", icon="🧠", width="stretch")
+    st.page_link("pages/01_Home.py", label="Open KPI dashboard", icon="📊", width="stretch")
 
 if api_online:
     st.success(f"FastAPI is healthy in the **{health.get('environment', 'configured')}** environment.")
@@ -59,7 +61,10 @@ else:
     if health_error:
         st.caption(health_error)
 
-section_heading("Choose your workflow", "Start with a business question, then open the most relevant workspace.")
+section_heading("Ask the Business Analyst", "No model selection required. One supervisor routes to existing registered tools.")
+render_agent_entry("landing")
+
+section_heading("Choose a direct workspace", "These focused pages remain available for expert, capability-specific work.")
 tabs = st.tabs(["Understand", "Predict", "Personalize", "Plan", "Ask", "Operate"])
 for tab, workflow in zip(tabs, ["Understand", "Predict", "Personalize", "Plan", "Ask", "Operate"]):
     workflow_modules = [module for module in MODULES if module[0] == workflow]
@@ -99,11 +104,10 @@ with guide_column:
     st.markdown("#### A practical starting path")
     st.markdown(
         """
-        1. Open **Dashboard** to confirm business and API readiness.
-        2. Use **Customer Analytics** to understand the available population.
-        3. Choose a prediction or planning workflow for a focused decision.
-        4. Use the **RAG Chatbot** for grounded knowledge retrieval.
-        5. Check **System Monitoring**, **Grafana**, and **MLflow** for operations and experiments.
+        1. Ask the **Agentic Analyst** a business question; it chooses the relevant tools.
+        2. Open **Customer Analytics** or a direct prediction/planning page for focused work.
+        3. Use the **RAG Chatbot** when you specifically want indexed document retrieval.
+        4. Check **System Monitoring**, **Grafana**, and **MLflow** for operations and experiments.
         """
     )
     st.dataframe(coverage_counts, hide_index=True, width="stretch")

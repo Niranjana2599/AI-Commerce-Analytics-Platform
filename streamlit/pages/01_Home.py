@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from utils.api_client import api_request
+from utils.agent_entry import render_agent_entry
 from utils.ui import page_hero, section_heading, setup_page, show_api_error
 
 
@@ -39,10 +40,43 @@ def style_figure(figure, *, height=360):
 
 
 page_hero(
-    "Executive overview",
-    "Commerce intelligence at a glance",
-    "Monitor business performance, model readiness, and API health from one responsive workspace.",
+    "AI Commerce Intelligence",
+    "Ask a business question. Let the platform determine the analysis required.",
+    "One supervisor selects from existing customer, analytics, recommendation, forecasting, and knowledge tools, then checks each result before continuing.",
 )
+
+section_heading("Ask the Business Analyst", "Start in plain language. You do not need to choose a model or capability.")
+render_agent_entry("home_dashboard")
+st.page_link("pages/13_Agentic_Analyst.py", label="Open Agentic Analyst", icon="🧠")
+
+section_heading("How the analyst works", "A single supervisor routes through existing tools and follows the evidence returned.")
+first_steps = ["Question", "Guardrails", "Supervisor", "Select capability"]
+step_columns = st.columns(4)
+for column, label in zip(step_columns, first_steps):
+    with column:
+        with st.container(border=True):
+            st.markdown(f"**{label}**")
+st.markdown("<div style='text-align:center;color:#a5b4fc'>↓ tool result returns to the supervisor</div>", unsafe_allow_html=True)
+second_steps = ["Existing tool", "Validate result", "Observe result", "Another tool / answer"]
+step_columns = st.columns(4)
+for column, label in zip(step_columns, second_steps):
+    with column:
+        with st.container(border=True):
+            st.markdown(f"**{label}**")
+st.caption("Question → Guardrails → Supervisor → Capability → Existing tool → Validate → Observe → Continue or finish")
+
+section_heading("Available capabilities", "These are tool groupings managed by one supervisor, not separate autonomous agents.")
+capability_columns = st.columns(3)
+capabilities = [
+    ("Customer", "RFM · CLV · churn · customer segmentation · recommendations"),
+    ("Analytics", "KPI and revenue analysis · forecasting · anomaly detection"),
+    ("Knowledge", "RAG · business documents · policies · grounded retrieval"),
+]
+for column, (title, description) in zip(capability_columns, capabilities):
+    with column:
+        with st.container(border=True):
+            st.markdown(f"#### {title}")
+            st.write(description)
 
 toolbar_left, toolbar_right = st.columns([5, 1])
 with toolbar_left:
@@ -119,25 +153,28 @@ if metrics:
             "state, segment, and order-status series are not exposed. This page avoids fabricating them and keeps all endpoints unchanged."
         )
 
-section_heading("Analytics workspace", "Open a focused workflow from the sidebar navigation.")
+section_heading("Direct workspaces", "Open a known capability directly when you want a focused expert workflow.")
 modules = [
-    ("👥", "Customer analytics", "Explore customer performance and segmentation."),
-    ("⚠️", "Churn prediction", "Identify customers who may need retention action."),
-    ("💎", "Lifetime value", "Estimate future customer value and growth."),
-    ("🚚", "Delivery intelligence", "Assess delivery-delay risk and timing."),
-    ("🎯", "Recommendations", "Generate relevant product suggestions."),
-    ("💬", "Review sentiment", "Understand customer-review tone."),
-    ("📈", "Demand forecasting", "Plan demand over a selected horizon."),
-    ("🤖", "RAG assistant", "Ask grounded questions about commerce data."),
+    ("👥", "Customer Analytics", "Explore customer performance and segmentation.", "pages/02_Customer_Analytics.py"),
+    ("⚠️", "Churn Prediction", "Estimate retention risk directly.", "pages/03_Churn_Prediction.py"),
+    ("💎", "CLV Prediction", "Estimate customer value directly.", "pages/04_CLV_Prediction.py"),
+    ("🚚", "Delivery Delay", "Assess delivery-delay risk.", "pages/05_Delivery_Delay.py"),
+    ("🎯", "Product Recommendation", "Generate focused product suggestions.", "pages/06_Product_Recommendation.py"),
+    ("💬", "Sentiment Analysis", "Inspect review language.", "pages/07_Sentiment_Analysis.py"),
+    ("📈", "Demand Forecasting", "Plan demand over a selected horizon.", "pages/08_Demand_Forecasting.py"),
+    ("📚", "RAG Chatbot", "Search indexed business knowledge directly.", "pages/09_RAG_Chatbot.py"),
+    ("🧭", "RAG Operations", "Inspect retrieval quality and latency.", "pages/11_RAG_Operations.py"),
+    ("🖥️", "Monitoring", "Inspect API and model telemetry.", "pages/12_Monitoring.py"),
 ]
 for row_start in range(0, len(modules), 4):
     columns = st.columns(4)
-    for column, (icon, name, description) in zip(columns, modules[row_start:row_start + 4]):
+    for column, (icon, name, description, page) in zip(columns, modules[row_start:row_start + 4]):
         with column:
             st.markdown(
                 f'<div class="module-card"><div>{icon}</div><h3>{name}</h3><p>{description}</p></div>',
                 unsafe_allow_html=True,
             )
+            st.page_link(page, label=f"Open {name}", icon=icon, width="stretch")
 
 if api_online and metrics:
     st.success("Dashboard synchronized with the FastAPI service.", icon="✅")

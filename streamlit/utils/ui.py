@@ -25,7 +25,8 @@ def setup_page(title: str) -> None:
         with st.expander("Connection details"):
             st.code(API_BASE_URL, language=None)
         st.divider()
-        st.caption("Select a module from the navigation menu.")
+        st.page_link("pages/13_Agentic_Analyst.py", label="Ask a business question", icon="🧠", width="stretch")
+        st.caption("Direct capability workspaces remain available in page navigation.")
 
 
 def _apply_theme() -> None:
