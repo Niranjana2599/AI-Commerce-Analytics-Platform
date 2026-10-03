@@ -5,7 +5,8 @@ pyarrow
 scikit-learn==1.7.2
 xgboost
 joblib
-mlflow
+# Keep MLflow and the persistent SQLite schema in sync across image rebuilds.
+mlflow==3.16.1
 
 # LangChain RAG
 langchain
