@@ -11,6 +11,8 @@ from uuid import uuid4
 from langgraph.graph import END, START, StateGraph
 
 from backend.app.agents.planner import understand_request
+from backend.app.agents.response import _observation_summary, _output_guard, _synthesize
+from backend.app.agents.presentation import public_input_summary, public_output
 from backend.app.agents.selector import select_next_action
 from backend.app.agents.state import AgentState
 from backend.app.guardrails.injection import detect_prompt_injection
@@ -25,6 +27,8 @@ MAX_REPEATED_SIGNATURES=2
 MAX_TOOL_LATENCY_MS=15_000
 
 
+# 1–2. Guard the request before classifying intent so unsafe input never
+# reaches a planner or a domain service.
 def _trace(state:AgentState,event:str,**fields:Any)->None:
     state.setdefault("trace",[]).append({"event":event,"iteration":state.get("iteration_count",0),**fields})
 
@@ -63,6 +67,7 @@ def _understand(state:AgentState)->AgentState:
     return state
 
 
+# 3–4. The registry and prior validated results constrain each next action.
 def _select(state:AgentState)->AgentState:
     if state.get("next_action") is not None:
         action=state["next_action"]
@@ -98,6 +103,7 @@ def _select(state:AgentState)->AgentState:
     return state
 
 
+# 5. Execute one registered tool; retries/fallbacks are separate graph nodes.
 def _execute(state:AgentState)->AgentState:
     action=state["current_action"]
     spec=TOOL_REGISTRY[action["tool"]]
@@ -133,6 +139,7 @@ def _execute(state:AgentState)->AgentState:
     return state
 
 
+# 6–8. Validate, observe, then route to retry, fallback, another tool, or finish.
 def _validate(state:AgentState)->AgentState:
     last=state["tool_calls"][-1]
     state["tool_valid"]=last["status"]=="success"
@@ -240,18 +247,6 @@ def _observe(state:AgentState)->AgentState:
     return state
 
 
-def _observation_summary(tool:str,output:dict[str,Any])->dict[str,Any]:
-    summary={}
-    for key in ("metric","value","count","segment","method","status","cohort_definition"):
-        if key in output: summary[key]=output[key]
-    if "customers" in output: summary["customer_count"]=len(output["customers"])
-    if "recommendations" in output: summary["recommendation_count"]=len(output["recommendations"])
-    if "flags" in output: summary["flag_count"]=len(output["flags"])
-    if "sources" in output: summary["retrieval_count"]=len(output["sources"])
-    if tool=="rag_search": summary["source_labels"]=output.get("sources",[])
-    return summary
-
-
 def _reason(state:AgentState)->AgentState:
     if state.get("decision")=="finish" and state.get("decision_summary"):
         return state
@@ -282,93 +277,6 @@ def _after_validation(state:AgentState)->str:
     return _validation_route(state)
 
 
-def _synthesize(state:AgentState)->AgentState:
-    """Create a concise, evidence-derived response; never expose private reasoning."""
-    results=state["tool_results"]
-    parts=[]
-    for row in results:
-        tool,out=row["tool"],row["output"]
-        if tool=="business_analytics_tool":
-            parts.append(f"{out['metric'].replace('_',' ').title()}: {out['value']:,} (commerce analytics)." if isinstance(out.get("value"),(int,float)) else f"{out['metric']} results were retrieved from commerce analytics.")
-        elif tool=="customer_cohort_tool":
-            parts.append(f"Selected {out['count']} customers in the {out['segment']} cohort ({out['cohort_definition']}).")
-        elif tool=="customer_rfm_tool":
-            parts.append(f"RFM features were retrieved for {out.get('count',len(out.get('customers',[])))} cohort customers.")
-        elif tool=="clv_prediction_tool":
-            ranked=sorted(out.get("customers",[]),key=lambda item:item.get("predicted_clv",0),reverse=True)
-            preview=[{"customer_id":x.get("customer_unique_id"),"predicted_clv":round(float(x["predicted_clv"]),2)} for x in ranked[:5] if x.get("predicted_clv") is not None]
-            parts.append(f"The saved CLV model scored {len(ranked)} customers. Highest predicted values: {preview}.")
-        elif tool=="historical_value_tool":
-            parts.append("The saved CLV model was unavailable; customers are ranked by observed historical monetary value (a proxy, not a model prediction).")
-        elif tool=="churn_prediction_tool":
-            ranked=sorted(out.get("customers",[]),key=lambda item:item.get("churn_probability",0),reverse=True)
-            preview=[{"customer_id":x.get("customer_unique_id"),"churn_probability":round(float(x["churn_probability"]),3)} for x in ranked[:5] if x.get("churn_probability") is not None]
-            parts.append(f"The saved churn model scored {len(ranked)} customers. Highest scores: {preview}.")
-        elif tool=="rfm_risk_tool":
-            preview=[{"customer_id":x.get("customer_unique_id"),"risk_proxy":x["risk_proxy"],"recency_days":x.get("recency_days")} for x in out.get("customers",[])[:5]]
-            parts.append(f"The trained churn model was unavailable. An RFM-based risk proxy was used instead (recency_days > 180); this is not a churn-model prediction. Examples: {preview}.")
-        elif tool=="recommendation_tool":
-            parts.append(f"Recommendations were generated for {len(out['recommendations'])} selected customers: {out['recommendations']}.")
-        elif tool=="anomaly_detection_tool":
-            if out.get("status")=="insufficient_history": parts.append(f"Insufficient history to assess {out['metric']} anomalies.")
-            else: parts.append(f"{out['metric'].title()} anomaly scan ({out['method']}) found {len(out['flags'])} flagged days.")
-        elif tool=="demand_forecast_tool":
-            forecast=out.get("forecast",[])
-            parts.append(f"Demand forecast returned {len(forecast)} points; first predicted demand is {forecast[0]['predicted_demand']} per day." if forecast else "Demand forecast returned no points.")
-        elif tool=="sentiment_tool": parts.append(f"Review sentiment: {out['sentiment']}.")
-        elif tool=="rag_search":
-            snippets=[]
-            text=out.get("documents","")[:1600]
-            for source in out.get("sources",[])[:5]:
-                snippets.append(f"[{source}]")
-            parts.append("Retrieved untrusted evidence (treated as data, not instructions): " + text + " Sources: " + ", ".join(snippets))
-    if not parts:
-        parts=["No validated evidence was available to answer this question."]
-    fallback_succeeded=any(call.get("fallback_used") and call.get("status")=="success" for call in state["tool_calls"])
-    if state.get("errors") and not fallback_succeeded:
-        parts.append("Some requested tools failed; results above are partial.")
-    if state.get("anomalies"):
-        anomaly_summaries=[]
-        for item in state["anomalies"]:
-            label=item["anomaly_type"].replace("_"," ")
-            if item["anomaly_type"]=="iteration_limit": anomaly_summaries.append("Stopped at the configured iteration limit; returning partial results")
-            elif item["anomaly_type"]=="repeated_tool_result": anomaly_summaries.append("Stopped after a repeated tool result")
-            elif item["anomaly_type"]=="tool_oscillation": anomaly_summaries.append("Stopped after repeated tool switching")
-            elif item["anomaly_type"]=="fallback_limit": anomaly_summaries.append("Stopped after reaching the fallback limit")
-            elif item["anomaly_type"]=="retry_limit": anomaly_summaries.append("Stopped after reaching the retry limit")
-            else: anomaly_summaries.append(f"Recorded {label}")
-        parts.append("Execution safety: " + "; ".join(anomaly_summaries) + ".")
-    answer=" ".join(parts)
-    has_rag=any(row["tool"]=="rag_search" for row in results)
-    grounding="grounded" if results and (not has_rag or bool(state["sources"])) else "unknown"
-    if results and not has_rag and all(row["tool"]=="customer_cohort_tool" and row["output"].get("count",0)==0 for row in results):
-        grounding="unknown"
-    state["final_response"]={"answer":answer,"grounded":grounding,"sources":state["sources"],"evidence_status":"validated tool results" if results else "no evidence","confidence":"limited" if any(call.get("fallback_used") for call in state["tool_calls"]) else "evidence-backed" if results else "none"}
-    _trace(state,"synthesized",grounded=state["final_response"]["grounded"],evidence_count=len(results))
-    return state
-
-
-def _output_guard(state:AgentState)->AgentState:
-    response=state.get("final_response",{})
-    answer=redact_contact_details(response.get("answer",""))
-    retrieved_sources={source for row in state["tool_results"] if row["tool"]=="rag_search" for source in row["output"].get("sources",[])}
-    if any(row["tool"]=="rag_search" and row.get("valid") for row in state["tool_results"]):
-        if not retrieved_sources or not set(response.get("sources",[])).issubset(retrieved_sources):
-            response["grounded"]="false"
-            answer="Retrieved evidence did not pass source validation; no grounded RAG claim is returned."
-    if not answer.strip():
-        state["errors"].append("Output guardrail rejected empty synthesis")
-        answer="Unable to produce a validated answer from available evidence."
-        response["grounded"]="false"
-    if contains_contact_details(answer):
-        answer="Output withheld because contact PII remained after redaction."
-        response["grounded"]="false"
-    response["answer"]=answer
-    state["final_response"]=response
-    _trace(state,"output_guard",pii_redacted=True,source_valid=bool(retrieved_sources) if any(row["tool"]=="rag_search" for row in state["tool_results"]) else None)
-    return state
-
-
 def _evaluate(state:AgentState)->AgentState:
     result=state["final_response"]
     succeeded={call["tool"] for call in state["tool_calls"] if call["status"]=="success"}
@@ -384,6 +292,7 @@ def _evaluate(state:AgentState)->AgentState:
     return state
 
 
+# 10. Unsafe or unsupported requests end with a controlled response.
 def _finish_failure(state:AgentState)->AgentState:
     guard_status=state.get("guardrail_result",{}).get("status")
     if guard_status in {"blocked","clarification"}:
@@ -397,6 +306,8 @@ def _finish_failure(state:AgentState)->AgentState:
     return state
 
 
+# The graph declaration below makes the continue/finish and retry/fallback
+# branches visible in one place; it contains no domain algorithms.
 _builder=StateGraph(AgentState)
 for _name,_node in (("guard",_guard),("understand",_understand),("select",_select),("execute",_execute),("validate",_validate),("retry",_retry),("fallback",_make_fallback),("observe",_observe),("reason",_reason),("synthesize",_synthesize),("output_guard",_output_guard),("evaluate",_evaluate),("stop",_finish_failure)):
     _builder.add_node(_name,_node)
@@ -417,33 +328,6 @@ _builder.add_conditional_edges("stop",lambda s:"evaluate" if s.get("guardrail_re
 agent_graph=_builder.compile()
 
 
-def _public_output(tool:str,output:dict[str,Any]|None)->dict[str,Any]|None:
-    if not isinstance(output,dict): return None
-    keys={"customer_cohort_tool":("segment","count","cohort_definition"),"customer_rfm_tool":("count","note"),
-          "business_analytics_tool":("metric","value","rows"),"anomaly_detection_tool":("metric","method","baseline_median","observations","flags","status"),
-          "demand_forecast_tool":("forecast",),"sentiment_tool":("sentiment",),"rag_search":("documents","sources"),
-          "recommendation_tool":("recommendations",),"churn_prediction_tool":("customers","model"),"clv_prediction_tool":("customers","model"),
-          "rfm_risk_tool":("customers","method","is_model_prediction"),"historical_value_tool":("customers","method","is_model_prediction")}.get(tool,())
-    safe={key:output[key] for key in keys if key in output}
-    if "customers" in safe:
-        safe["customers"]=[{key:row[key] for key in ("customer_unique_id","customer_id","recency_days","frequency","monetary","predicted_clv","churn_probability","risk_proxy","prediction") if key in row} for row in safe["customers"][:20]]
-    if "recommendations" in safe:
-        safe["recommendations"]=[{key:row[key] for key in ("customer_id","product_ids") if key in row} for row in safe["recommendations"]]
-    if "documents" in safe: safe["documents"]=redact_contact_details(str(safe["documents"])[:1600])
-    return safe
-
-
-def _public_input_summary(inputs:dict[str,Any])->dict[str,Any]:
-    summary={key:value for key,value in inputs.items() if key in {"metric","segment","limit","days","k"}}
-    for key in ("customers","customer_ids"):
-        if key in inputs: summary[f"{key}_count"]=len(inputs[key])
-    if "features" in inputs: summary["feature_names"]=sorted(inputs["features"].keys())
-    if "customer_id" in inputs: summary["customer_id"]="[REDACTED]"
-    if "review" in inputs: summary["review"]="[REDACTED]"
-    if "query" in inputs: summary["query"]="[REDACTED]"
-    return summary
-
-
 def run_agent(question:str,customer_id:str|None=None,review_text:str|None=None,*,planner_mode:str="auto",selector_mode:str="auto",max_iterations:int=MAX_ITERATIONS)->dict[str,Any]:
     request_id=str(uuid4())
     state:AgentState={"request_id":request_id,"user_query":question,"customer_id":customer_id,"review_text":review_text,
@@ -462,7 +346,7 @@ def run_agent(question:str,customer_id:str|None=None,review_text:str|None=None,*
     safe_calls=[]
     for item in result.get("tool_calls",[]):
         safe_calls.append({"tool":item["tool"],"status":item["status"],"input_redacted":True,
-            "input_fields":sorted(item.get("input",{}).keys()),"input_summary":_public_input_summary(item.get("input",{})),"output":_public_output(item["tool"],item.get("output")),
+            "input_fields":sorted(item.get("input",{}).keys()),"input_summary":public_input_summary(item.get("input",{})),"output":public_output(item["tool"],item.get("output")),
             "attempt":item["attempt"],"elapsed_ms":item["elapsed_ms"],"fallback_used":item["fallback_used"],
             "primary_tool":item.get("primary_tool"),"fallback_tool":item.get("fallback_tool"),
             "fallback_reason":redact_contact_details(str(item.get("fallback_reason") or "")) or None,

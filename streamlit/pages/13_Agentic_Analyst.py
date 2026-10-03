@@ -7,9 +7,9 @@ from utils.ui import page_hero, setup_page
 
 setup_page("Agentic Analyst")
 page_hero(
-    "Multi-step business analysis",
     "Agentic Commerce Analyst",
-    "Ask a business question. The supervisor selects from existing analytics, ML, recommendation, forecasting, sentiment, anomaly, and RAG services.",
+    "Ask the Business Analyst",
+    "Ask in plain language. The supervisor selects from the platform’s existing customer, analytics, forecast, recommendation, sentiment, anomaly, and knowledge tools.",
 )
 
 with st.form("agent_question_form"):
@@ -37,7 +37,7 @@ if submitted:
         if error:
             st.error(error)
         elif result:
-            st.markdown("### Analysis")
+            st.markdown("### Answer")
             st.write(result.get("answer", "No answer returned."))
             columns = st.columns(4)
             columns[0].metric("Intent", result.get("intent", "unknown"))
@@ -45,15 +45,13 @@ if submitted:
             columns[2].metric("Iterations", result.get("iterations", 0))
             columns[3].metric("Latency", f"{result.get('latency_ms', 0):.0f} ms")
             if result.get("tools_used"):
-                st.caption("Tools: " + " → ".join(result["tools_used"]))
+                st.markdown("**Tools used**  \n" + " → ".join(result["tools_used"]))
             if result.get("sources"):
                 st.markdown("**Retrieved sources:** " + ", ".join(sorted(set(result["sources"]))))
             if result.get("errors"):
                 with st.expander("Tool errors and fallbacks"):
                     st.write(result["errors"])
-            with st.expander("Safe execution trace", expanded=True):
-                if result.get("decision_summary"):
-                    st.caption(f"Decision: {result['decision_summary']}")
+            with st.expander("Execution evidence", expanded=True):
                 for index, step in enumerate(result.get("evidence", []), start=1):
                     status = "fallback" if step.get("fallback_used") else step.get("status", "unknown")
                     st.markdown(
@@ -63,11 +61,24 @@ if submitted:
                     if step.get("fallback_used"):
                         st.caption(f"Fallback for {step.get('primary_tool')}: {step.get('fallback_tool')} — {step.get('fallback_reason')}")
                     if step.get("output"):
-                        st.json(step["output"])
-                st.markdown("**Decision and synthesis trace**")
-                st.dataframe(result.get("trace", []), hide_index=True, width="stretch")
-                st.markdown("**Evaluation**")
-                st.json(result.get("evaluation", {}))
+                        summary = step["output"]
+                        if summary.get("customer_count") is not None:
+                            st.caption(f"Observed {summary['customer_count']} customer records.")
+                        if summary.get("recommendation_count") is not None:
+                            st.caption(f"Produced {summary['recommendation_count']} recommendation groups.")
+                        if summary.get("sources"):
+                            st.caption("Sources: " + ", ".join(summary["sources"]))
+                        if summary.get("product_ids"):
+                            st.caption("Recommended product IDs: " + ", ".join(summary["product_ids"]))
+                        if summary.get("metric"):
+                            st.caption(f"{summary['metric']}: {summary.get('value', summary.get('status', 'observed'))}")
+                        if summary.get("forecast"):
+                            st.caption(f"Forecast points: {len(summary['forecast'])}")
+                with st.expander("Technical trace and evaluation"):
+                    if result.get("decision_summary"):
+                        st.caption(f"Decision summary: {result['decision_summary']}")
+                    st.dataframe(result.get("trace", []), hide_index=True, width="stretch")
+                    st.json(result.get("evaluation", {}))
 
 with st.expander("How this differs from the RAG chatbot"):
     st.markdown(

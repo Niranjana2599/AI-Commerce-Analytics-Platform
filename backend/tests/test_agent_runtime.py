@@ -7,7 +7,9 @@ import pandas as pd
 import pytest
 
 from backend.app.agents import supervisor
-from backend.app.agents.router import rule_select_next
+from backend.app.agents.presentation import public_input_summary, public_output
+from backend.app.agents.response import _synthesize
+from backend.app.agents.router import infer_request, rule_select_next
 from backend.app.agents.selector import _safe_observations
 from backend.app.evaluation.agent_eval import benchmark_agent_versions
 from backend.app.guardrails.injection import detect_prompt_injection
@@ -113,12 +115,57 @@ def test_tool_result_drives_next_tool_and_inputs(monkeypatch):
     assert result["tools_used"]==["customer_cohort_tool","customer_rfm_tool","clv_prediction_tool","churn_prediction_tool","recommendation_tool"]
     assert selected and selected[0]["customer_unique_id"]=="c-1"
     safe_calls=result["evidence"]
-    churn_output=next(item["output"]["customers"][0] for item in safe_calls if item["tool"]=="churn_prediction_tool")
-    assert churn_output["predicted_clv"]==1234.0
+    churn_output=next(item["output"] for item in safe_calls if item["tool"]=="churn_prediction_tool")
+    assert churn_output["customer_count"]==1
+    assert "customers" not in churn_output
     assert result["evaluation"]["task_success"] is True
-    assert "0.91" in result["answer"]
+    assert "1 had a score of at least 0.70" in result["answer"]
+    assert "c-1" not in result["answer"]
     assert all("chain_of_thought" not in key.lower() and "reasoning" not in key.lower() for key in result)
     assert "Observed" not in result["answer"]
+
+
+def test_public_execution_evidence_hides_customer_rows_and_document_bodies():
+    customer_output=public_output("churn_prediction_tool",{"customers":[{"customer_unique_id":"private-id","churn_probability":0.9}]})
+    rag_output=public_output("rag_search",{"documents":"Private document body and jane@example.com","sources":["handbook.pdf"]})
+    input_summary=public_input_summary({"customer_ids":["private-id"],"query":"private query"})
+    assert customer_output=={"customer_count":1}
+    assert "private-id" not in str(customer_output)
+    assert "documents" not in rag_output
+    assert rag_output["document_character_count"] > 0
+    assert "private query" not in str(input_summary)
+
+
+def test_missing_competitor_data_gets_explicit_limitation():
+    state={"user_query":"How do we compare against competitors?","tool_results":[],"tool_calls":[],
+           "sources":[],"anomalies":[],"trace":[],"errors":[]}
+    result=_synthesize(state)
+    assert "no validated competitor or market-share evidence" in result["final_response"]["answer"]
+    assert result["final_response"]["grounded"]=="unknown"
+
+    retrieved={"user_query":"How do we compare against competitors?","tool_results":[
+        {"tool":"rag_search","valid":True,"output":{"documents":"Seller delivery performance can vary.","sources":["policies_faq"]}}],
+        "tool_calls":[],"sources":["policies_faq"],"anomalies":[],"trace":[],"errors":[]}
+    answer=_synthesize(retrieved)["final_response"]["answer"]
+    assert "does not establish a factual competitor comparison" in answer
+    assert "Seller delivery performance" in answer
+
+
+@pytest.mark.parametrize(("question","expected"),[
+    ("Which customers are likely to churn?", {"cohort","rfm","churn"}),
+    ("Which customers have the highest lifetime value?", {"cohort","clv"}),
+    ("Show customer RFM segments", {"cohort","rfm"}),
+    ("Which products should we recommend?", {"cohort","recommendation"}),
+    ("Forecast demand for next week", {"forecast"}),
+    ("What are our primary KPIs?", {"analytics"}),
+    ("Search the knowledge base for delivery policy", {"rag"}),
+    ("Which high-value customers may churn and what should we recommend?", {"cohort","clv","churn","recommendation"}),
+    ("A festival is coming. How can we increase revenue?", {"cohort","recommendation","analytics","forecast"}),
+    ("How do we compare against competitors?", {"rag"}),
+])
+def test_business_language_maps_to_available_capabilities(question,expected):
+    _,objectives=infer_request(question)
+    assert expected.issubset(set(objectives))
 
 
 def test_failed_churn_result_prevents_recommendation_without_fallback(monkeypatch):

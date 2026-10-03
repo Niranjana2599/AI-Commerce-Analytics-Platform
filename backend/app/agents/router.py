@@ -8,6 +8,14 @@ GOAL_NAMES = {"cohort", "rfm", "clv", "churn", "recommendation", "analytics", "f
 def infer_request(question: str, customer_id: str | None = None) -> tuple[str, list[str]]:
     q = question.lower()
     goals: list[str] = []
+    # Broad business language can combine structured data operations even
+    # when the user does not name a model or database column.
+    if any(phrase in q for phrase in ("ideal customer", "buying habits", "buying behavior", "shopping behavior")):
+        goals += ["cohort", "rfm", "analytics"]
+    if any(phrase in q for phrase in ("primary kpi", "primary kpis", "key performance indicator", "business kpi")):
+        goals.append("analytics")
+    if any(phrase in q for phrase in ("increase revenue", "grow revenue", "boost sales", "festival", "holiday campaign", "seasonal campaign")):
+        goals += ["cohort", "recommendation", "analytics", "forecast"]
     if any(word in q for word in ("anomaly", "unusual", "drop", "spike", "suddenly")):
         goals += ["analytics", "anomaly"]
         if "why" in q or "explain" in q:
